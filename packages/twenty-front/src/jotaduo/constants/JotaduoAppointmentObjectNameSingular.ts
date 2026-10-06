@@ -1,0 +1,1 @@
+export const JOTADUO_APPOINTMENT_OBJECT_NAME_SINGULAR = 'jdAgendamento';

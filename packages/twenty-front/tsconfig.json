@@ -46,6 +46,7 @@
     "lingui.config.ts",
     "jest.config.mjs",
     "vite.config.ts",
+    "vite.config.jotaduo.ts",
     "vitest.config.ts",
     "setupTests.ts"
   ],
