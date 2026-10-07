@@ -17,5 +17,7 @@ export const aiProviderConfigSchema = z.object({
   accessKeyId: z.string().optional(),
   secretAccessKey: z.string().optional(),
   sessionToken: z.string().optional(),
+  // read by openai-compatible providers only; an endpoint that rejects json_schema must leave it off
+  supportsStructuredOutputs: z.boolean().optional(),
   models: z.array(aiProviderModelConfigSchema).optional(),
 });
