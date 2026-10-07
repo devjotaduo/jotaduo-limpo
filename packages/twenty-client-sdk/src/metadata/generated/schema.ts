@@ -2949,11 +2949,40 @@ export interface AgentMessage {
     __typename: 'AgentMessage'
 }
 
+export interface RunAgentCost {
+    totalCostInDollars: Scalars['Float']
+    creditsUsedMicro: Scalars['Float']
+    __typename: 'RunAgentCost'
+}
+
+export interface RunAgentToolCall {
+    toolName: Scalars['String']
+    state: Scalars['String']
+    __typename: 'RunAgentToolCall'
+}
+
+export interface RunAgentUsage {
+    inputTokens: Scalars['Int']
+    outputTokens: Scalars['Int']
+    reasoningTokens?: Scalars['Int']
+    cacheReadTokens?: Scalars['Int']
+    cacheCreationTokens?: Scalars['Int']
+    totalTokens: Scalars['Int']
+    nativeWebSearchCallCount: Scalars['Int']
+    __typename: 'RunAgentUsage'
+}
+
 export interface RunAgentResult {
     result?: Scalars['JSON']
     error?: Scalars['String']
     success: Scalars['Boolean']
     threadId?: Scalars['UUID']
+    errorCode?: Scalars['String']
+    modelId?: Scalars['String']
+    usage?: RunAgentUsage
+    cost?: RunAgentCost
+    toolCalls?: RunAgentToolCall[]
+    durationMs?: Scalars['Float']
     __typename: 'RunAgentResult'
 }
 
@@ -6899,11 +6928,43 @@ export interface AgentMessageGenqlSelection{
     __scalar?: boolean | number
 }
 
+export interface RunAgentCostGenqlSelection{
+    totalCostInDollars?: boolean | number
+    creditsUsedMicro?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface RunAgentToolCallGenqlSelection{
+    toolName?: boolean | number
+    state?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
+export interface RunAgentUsageGenqlSelection{
+    inputTokens?: boolean | number
+    outputTokens?: boolean | number
+    reasoningTokens?: boolean | number
+    cacheReadTokens?: boolean | number
+    cacheCreationTokens?: boolean | number
+    totalTokens?: boolean | number
+    nativeWebSearchCallCount?: boolean | number
+    __typename?: boolean | number
+    __scalar?: boolean | number
+}
+
 export interface RunAgentResultGenqlSelection{
     result?: boolean | number
     error?: boolean | number
     success?: boolean | number
     threadId?: boolean | number
+    errorCode?: boolean | number
+    modelId?: boolean | number
+    usage?: RunAgentUsageGenqlSelection
+    cost?: RunAgentCostGenqlSelection
+    toolCalls?: RunAgentToolCallGenqlSelection
+    durationMs?: boolean | number
     __typename?: boolean | number
     __scalar?: boolean | number
 }
@@ -8097,7 +8158,7 @@ export interface DeleteOneIndexInput {
 /** The id of the custom index to delete. */
 id: Scalars['UUID']}
 
-export interface RunAgentInput {agentUniversalIdentifier: Scalars['String'],prompt?: (Scalars['String'] | null),runAsWorkspaceMemberId?: (Scalars['UUID'] | null),messages?: (RunAgentMessageInput[] | null),input?: (RunAgentMessageInput[] | null),additionalInstructions?: (Scalars['String'] | null),thread?: (RunAgentThreadInput | null)}
+export interface RunAgentInput {agentUniversalIdentifier: Scalars['String'],prompt?: (Scalars['String'] | null),runAsWorkspaceMemberId?: (Scalars['UUID'] | null),messages?: (RunAgentMessageInput[] | null),input?: (RunAgentMessageInput[] | null),additionalInstructions?: (Scalars['String'] | null),thread?: (RunAgentThreadInput | null),persist?: (Scalars['Boolean'] | null)}
 
 export interface RunAgentMessageInput {role: RunAgentMessageRole,content: Scalars['String'],attachments?: (RunAgentMessageAttachmentInput[] | null)}
 
@@ -10460,6 +10521,30 @@ export interface CreateRecordExportInput {objectMetadataId: Scalars['UUID'],fiel
     export const isAgentMessage = (obj?: { __typename?: any } | null): obj is AgentMessage => {
       if (!obj?.__typename) throw new Error('__typename is missing in "isAgentMessage"')
       return AgentMessage_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const RunAgentCost_possibleTypes: string[] = ['RunAgentCost']
+    export const isRunAgentCost = (obj?: { __typename?: any } | null): obj is RunAgentCost => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isRunAgentCost"')
+      return RunAgentCost_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const RunAgentToolCall_possibleTypes: string[] = ['RunAgentToolCall']
+    export const isRunAgentToolCall = (obj?: { __typename?: any } | null): obj is RunAgentToolCall => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isRunAgentToolCall"')
+      return RunAgentToolCall_possibleTypes.includes(obj.__typename)
+    }
+    
+
+
+    const RunAgentUsage_possibleTypes: string[] = ['RunAgentUsage']
+    export const isRunAgentUsage = (obj?: { __typename?: any } | null): obj is RunAgentUsage => {
+      if (!obj?.__typename) throw new Error('__typename is missing in "isRunAgentUsage"')
+      return RunAgentUsage_possibleTypes.includes(obj.__typename)
     }
     
 

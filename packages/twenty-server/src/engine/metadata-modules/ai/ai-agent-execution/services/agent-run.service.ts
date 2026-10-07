@@ -23,6 +23,8 @@ import { AgentRunnerService } from 'src/engine/metadata-modules/ai/ai-agent-exec
 import { type RunAsWorkspaceMemberContext } from 'src/engine/metadata-modules/ai/ai-agent-execution/types/run-as-workspace-member-context.type';
 import { addAdditionalInstructionsToLastRunAgentMessage } from 'src/engine/metadata-modules/ai/ai-agent-execution/utils/add-additional-instructions-to-last-run-agent-message.util';
 import { buildAgentRunThreadId } from 'src/engine/metadata-modules/ai/ai-agent-execution/utils/build-agent-run-thread-id.util';
+import { mapAgentRunSummaryToRunAgentResult } from 'src/engine/metadata-modules/ai/ai-agent-execution/utils/map-agent-run-summary-to-run-agent-result.util';
+import { resolveRunAgentErrorCode } from 'src/engine/metadata-modules/ai/ai-agent-execution/utils/resolve-run-agent-error-code.util';
 import { resolveRunAgentMessagesOrThrow } from 'src/engine/metadata-modules/ai/ai-agent-execution/utils/resolve-run-agent-messages-or-throw.util';
 import { AGENT_RUN_BASE_SYSTEM_PROMPT } from 'src/engine/metadata-modules/ai/ai-agent/constants/agent-run-base-system-prompt.const';
 import { AgentEntity } from 'src/engine/metadata-modules/ai/ai-agent/entities/agent.entity';
@@ -41,6 +43,7 @@ type RunAgentServiceInput = {
   additionalInstructions?: string | null;
   thread?: RunAgentThread | null;
   runAsWorkspaceMemberId?: string;
+  persist?: boolean | null;
 };
 
 @Injectable()
@@ -85,6 +88,16 @@ export class AgentRunService {
 
     if (isDefined(thread)) {
       this.assertCanContinueConversation({ callerApplication, messages });
+    }
+
+    const shouldPersist = input.persist !== false;
+
+    // the record is how a workspace sees what its members and keys ran, so only an app opts out
+    if (!shouldPersist && !isDefined(callerApplication)) {
+      throw new AiException(
+        'Running an agent without recording it requires an application access token',
+        AiExceptionCode.RUN_AGENT_NOT_ALLOWED,
+      );
     }
 
     const agent = await this.agentRepository.findOne(workspace.id, {
@@ -164,8 +177,11 @@ export class AgentRunService {
         })
       : messages;
 
+    // a run kept off the record has no conversation to point the caller to
+    const resultThreadId = shouldPersist ? threadId : null;
+
     try {
-      const { outcome } = await this.agentRunnerService.run({
+      const { outcome, summary } = await this.agentRunnerService.run({
         workspaceId: workspace.id,
         conversation: { threadId, isCreated: !isDefined(thread) },
         conversationActor: isDefined(runAsContext)
@@ -174,13 +190,15 @@ export class AgentRunService {
               userWorkspaceId: runAsContext.authContext.userWorkspaceId,
             }
           : { type: 'application', applicationId: application.id },
-        turn: {
-          title: threadTitle,
-          senderUserWorkspaceId,
-          senderApplicationId: callerApplication?.id ?? null,
-          messages,
-          resolveCreatedBy: async () => createdBy,
-        },
+        turn: shouldPersist
+          ? {
+              title: threadTitle,
+              senderUserWorkspaceId,
+              senderApplicationId: callerApplication?.id ?? null,
+              messages,
+              resolveCreatedBy: async () => createdBy,
+            }
+          : null,
         execution: {
           agent,
           messages: executionMessages,
@@ -195,15 +213,27 @@ export class AgentRunService {
         },
       });
 
+      const runSummary = mapAgentRunSummaryToRunAgentResult(summary);
+
       if (outcome.status === 'FAILED') {
-        return { result: null, error: outcome.error, success: false, threadId };
+        return {
+          result: null,
+          error: outcome.error,
+          success: false,
+          threadId: resultThreadId,
+          errorCode:
+            outcome.errorCode ?? AiExceptionCode.AGENT_EXECUTION_FAILED,
+          ...runSummary,
+        };
       }
 
       return {
         result: outcome.status === 'COMPLETED' ? outcome.result : null,
         error: null,
         success: true,
-        threadId,
+        threadId: resultThreadId,
+        errorCode: null,
+        ...runSummary,
       };
     } catch (error) {
       if (
@@ -222,7 +252,8 @@ export class AgentRunService {
         result: null,
         error: 'Agent execution failed.',
         success: false,
-        threadId,
+        threadId: resultThreadId,
+        errorCode: resolveRunAgentErrorCode(error),
       };
     }
   }

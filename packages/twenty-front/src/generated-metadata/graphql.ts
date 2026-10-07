@@ -6133,10 +6133,17 @@ export enum RowLevelPermissionPredicateOperand {
   VECTOR_SEARCH = 'VECTOR_SEARCH'
 }
 
+export type RunAgentCost = {
+  __typename?: 'RunAgentCost';
+  creditsUsedMicro: Scalars['Float']['output'];
+  totalCostInDollars: Scalars['Float']['output'];
+};
+
 export type RunAgentInput = {
   additionalInstructions?: InputMaybe<Scalars['String']['input']>;
   agentUniversalIdentifier: Scalars['String']['input'];
   input?: InputMaybe<Array<RunAgentMessageInput>>;
+  persist?: InputMaybe<Scalars['Boolean']['input']>;
   runAsWorkspaceMemberId?: InputMaybe<Scalars['UUID']['input']>;
   thread?: InputMaybe<RunAgentThreadInput>;
 };
@@ -6159,15 +6166,38 @@ export enum RunAgentMessageRole {
 
 export type RunAgentResult = {
   __typename?: 'RunAgentResult';
+  cost?: Maybe<RunAgentCost>;
+  durationMs?: Maybe<Scalars['Float']['output']>;
   error?: Maybe<Scalars['String']['output']>;
+  errorCode?: Maybe<Scalars['String']['output']>;
+  modelId?: Maybe<Scalars['String']['output']>;
   result?: Maybe<Scalars['JSON']['output']>;
   success: Scalars['Boolean']['output'];
   threadId?: Maybe<Scalars['UUID']['output']>;
+  toolCalls?: Maybe<Array<RunAgentToolCall>>;
+  usage?: Maybe<RunAgentUsage>;
 };
 
 export type RunAgentThreadInput = {
   key: Scalars['String']['input'];
   title?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type RunAgentToolCall = {
+  __typename?: 'RunAgentToolCall';
+  state: Scalars['String']['output'];
+  toolName: Scalars['String']['output'];
+};
+
+export type RunAgentUsage = {
+  __typename?: 'RunAgentUsage';
+  cacheCreationTokens?: Maybe<Scalars['Int']['output']>;
+  cacheReadTokens?: Maybe<Scalars['Int']['output']>;
+  inputTokens: Scalars['Int']['output'];
+  nativeWebSearchCallCount: Scalars['Int']['output'];
+  outputTokens: Scalars['Int']['output'];
+  reasoningTokens?: Maybe<Scalars['Int']['output']>;
+  totalTokens: Scalars['Int']['output'];
 };
 
 export type SsoConnection = {

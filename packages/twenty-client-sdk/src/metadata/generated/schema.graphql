@@ -3417,11 +3417,37 @@ type AgentMessage {
   createdAt: DateTime!
 }
 
+type RunAgentCost {
+  totalCostInDollars: Float!
+  creditsUsedMicro: Float!
+}
+
+type RunAgentToolCall {
+  toolName: String!
+  state: String!
+}
+
+type RunAgentUsage {
+  inputTokens: Int!
+  outputTokens: Int!
+  reasoningTokens: Int
+  cacheReadTokens: Int
+  cacheCreationTokens: Int
+  totalTokens: Int!
+  nativeWebSearchCallCount: Int!
+}
+
 type RunAgentResult {
   result: JSON
   error: String
   success: Boolean!
   threadId: UUID
+  errorCode: String
+  modelId: String
+  usage: RunAgentUsage
+  cost: RunAgentCost
+  toolCalls: [RunAgentToolCall!]
+  durationMs: Float
 }
 
 type ChannelSyncSuccess {
@@ -5186,6 +5212,7 @@ input RunAgentInput {
   input: [RunAgentMessageInput!]
   additionalInstructions: String
   thread: RunAgentThreadInput
+  persist: Boolean
 }
 
 input RunAgentMessageInput {

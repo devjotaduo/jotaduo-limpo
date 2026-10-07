@@ -6,12 +6,14 @@ import { type AgentRunnerRunInput } from 'src/engine/metadata-modules/ai/ai-agen
 
 type RunInput = Extract<AgentRunnerRunInput, { turn: unknown }>;
 
+type RunTurn = NonNullable<RunInput['turn']>;
+
 const CREATED_BY = {
   source: 'WORKFLOW',
   name: 'New deals',
   workspaceMemberId: null,
   context: {},
-} as Awaited<ReturnType<RunInput['turn']['resolveCreatedBy']>>;
+} as Awaited<ReturnType<RunTurn['resolveCreatedBy']>>;
 
 const PRIOR_MESSAGES = [{ id: 'message-id', role: 'assistant', parts: [] }];
 
@@ -45,16 +47,18 @@ const buildExecution = (
   ...overrides,
 });
 
+const TURN: RunTurn = {
+  title: 'Draft the quote',
+  senderUserWorkspaceId: 'user-workspace-id',
+  senderApplicationId: null,
+  messages: MESSAGES,
+  resolveCreatedBy: async () => CREATED_BY,
+};
+
 const RUN_INPUT: RunInput = {
   workspaceId: 'workspace-id',
   conversation: { threadId: 'thread-id', isCreated: false },
-  turn: {
-    title: 'Draft the quote',
-    senderUserWorkspaceId: 'user-workspace-id',
-    senderApplicationId: null,
-    messages: MESSAGES,
-    resolveCreatedBy: async () => CREATED_BY,
-  },
+  turn: TURN,
   execution: {
     agent: null,
     messages: MESSAGES,
@@ -195,7 +199,7 @@ describe('AgentRunnerService', () => {
 
       const { outcome } = await service.run({
         ...RUN_INPUT,
-        turn: { ...RUN_INPUT.turn, ...turnOverrides },
+        turn: { ...TURN, ...turnOverrides },
       });
 
       expect(agentAsyncExecutorService.executeAgent).toHaveBeenCalled();
@@ -232,7 +236,56 @@ describe('AgentRunnerService', () => {
       outcome: {
         status: 'FAILED',
         error: 'Agent stopped: no more available credits.',
+        errorCode: 'CREDITS_EXHAUSTED',
       },
     });
+  });
+
+  it('runs a turn it does not record and still reports its usage', async () => {
+    const { service, agentAsyncExecutorService, agentRunConversationService } =
+      buildService(
+        buildExecution({
+          modelId: 'openai/gpt-5-mini',
+          totalCostInDollars: 0.0004,
+          creditsUsedMicro: 400,
+        }),
+      );
+
+    const { outcome, summary } = await service.run({
+      ...RUN_INPUT,
+      conversation: { threadId: 'thread-id', isCreated: true },
+      turn: null,
+    });
+
+    expect(agentAsyncExecutorService.executeAgent).toHaveBeenCalledWith({
+      ...RUN_INPUT.execution,
+      priorMessages: [],
+    });
+    expect(agentRunConversationService.openTurn).not.toHaveBeenCalled();
+    expect(agentRunConversationService.closeTurn).not.toHaveBeenCalled();
+    expect(outcome).toEqual({
+      status: 'COMPLETED',
+      result: { answer: 'done' },
+    });
+    expect(summary).toMatchObject({
+      modelId: 'openai/gpt-5-mini',
+      usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3 },
+      cost: { totalCostInDollars: 0.0004, creditsUsedMicro: 400 },
+    });
+  });
+
+  it('records nothing of a turn it does not record that throws', async () => {
+    const { service, agentAsyncExecutorService, agentRunConversationService } =
+      buildService();
+
+    agentAsyncExecutorService.executeAgent.mockRejectedValue(
+      new Error('provider down'),
+    );
+
+    await expect(service.run({ ...RUN_INPUT, turn: null })).rejects.toThrow(
+      'provider down',
+    );
+    expect(agentRunConversationService.openTurn).not.toHaveBeenCalled();
+    expect(agentRunConversationService.failTurn).not.toHaveBeenCalled();
   });
 });
