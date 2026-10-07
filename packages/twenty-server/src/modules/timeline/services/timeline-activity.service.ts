@@ -26,6 +26,7 @@ import { type TimelineActivityRuleAction } from 'src/modules/timeline/types/time
 import { type TimelineActivityRule } from 'src/modules/timeline/types/timeline-activity-rule.type';
 import { buildLinkedTimelineActivityHappensAtSyncUpdates } from 'src/modules/timeline/utils/build-linked-timeline-activity-happens-at-sync-updates.util';
 import { resolveLinkedRecordCachedName } from 'src/modules/timeline/utils/resolve-linked-record-cached-name.util';
+import { resolveTimelineActivityActor } from 'src/modules/timeline/utils/resolve-timeline-activity-actor.util';
 import {
   resolveLinkedTimelineActivityHappensAt,
   resolveTimelineActivityHappensAt,
@@ -284,8 +285,12 @@ export class TimelineActivityService {
 
     if (rule.targetShape.kind === 'SELF') {
       return matchingEvents.map((event) => {
-        const properties =
-          ruleAction === 'updated' ? keepDiffOnly(event.properties) : {};
+        // Writes from apps and API keys carry no workspace member, so the actor is what names their author
+        const actor = resolveTimelineActivityActor({ event, ruleAction });
+        const properties = {
+          ...(ruleAction === 'updated' ? keepDiffOnly(event.properties) : {}),
+          ...(isDefined(actor) && { actor }),
+        };
 
         return {
           timelineActivityTypeId: timelineActivityType.id,
