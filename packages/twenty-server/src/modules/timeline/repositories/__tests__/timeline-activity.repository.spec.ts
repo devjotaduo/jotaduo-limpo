@@ -1,4 +1,5 @@
 import { type TimelineActivityTypeSnapshot } from 'twenty-shared/timeline';
+import { type ActorMetadata, FieldActorSource } from 'twenty-shared/types';
 
 import { type WorkspaceOrmManager } from 'src/engine/twenty-orm/workspace-orm.manager';
 import { TimelineActivityRepository } from 'src/modules/timeline/repositories/timeline-activity.repository';
@@ -165,5 +166,110 @@ describe('TimelineActivityRepository', () => {
     expect(
       workspaceRepository.find.mock.invocationCallOrder[0],
     ).toBeGreaterThan(executeRawQuery.mock.invocationCallOrder[0]);
+  });
+
+  describe('rows written without a workspace member', () => {
+    const RECENT_ROW_ID = '20202020-0000-4000-8000-000000000007';
+    const APPLICATION_ACTOR: ActorMetadata = {
+      source: FieldActorSource.APPLICATION,
+      name: 'JotaDuo',
+      workspaceMemberId: null,
+      context: {},
+    };
+
+    const upsertOverRecentRow = async (payloadActor: ActorMetadata) => {
+      const workspaceRepository = {
+        find: jest.fn().mockResolvedValue([
+          {
+            id: RECENT_ROW_ID,
+            targetPersonId: RECORD_ID,
+            workspaceMemberId: null,
+            timelineActivityTypeId: TIMELINE_ACTIVITY_TYPE_ID,
+            timelineActivityTypeSnapshot: TIMELINE_ACTIVITY_TYPE_SNAPSHOT,
+            linkedRecordId: null,
+            properties: {
+              diff: { name: { before: 'Before', after: 'First' } },
+              actor: APPLICATION_ACTOR,
+            },
+          },
+        ]),
+        update: jest.fn().mockResolvedValue(undefined),
+        insert: jest.fn().mockResolvedValue(undefined),
+      };
+      const workspaceOrmManager = {
+        executeInWorkspaceContext: jest.fn(
+          async (callback: () => Promise<void>) => callback(),
+        ),
+        runInWorkspaceTransaction: jest.fn(
+          async (
+            callback: (transactionScope: {
+              getRepository: () => typeof workspaceRepository;
+              executeRawQuery: () => Promise<never[]>;
+            }) => Promise<void>,
+          ) =>
+            callback({
+              getRepository: () => workspaceRepository,
+              executeRawQuery: jest.fn().mockResolvedValue([]),
+            }),
+        ),
+      } as unknown as WorkspaceOrmManager;
+
+      await new TimelineActivityRepository(
+        workspaceOrmManager,
+      ).upsertTimelineActivities({
+        objectSingularName: 'person',
+        workspaceId: WORKSPACE_ID,
+        payloads: [
+          {
+            happensAt: new Date('2026-08-23T09:00:00.000Z'),
+            properties: {
+              diff: { name: { before: 'First', after: 'Second' } },
+              actor: payloadActor,
+            },
+            recordId: RECORD_ID,
+            timelineActivityTypeId: TIMELINE_ACTIVITY_TYPE_ID,
+            timelineActivityTypeSnapshot: TIMELINE_ACTIVITY_TYPE_SNAPSHOT,
+          },
+        ],
+      });
+
+      return workspaceRepository;
+    };
+
+    it('keeps the actor when merging a row of the same actor', async () => {
+      const { update, insert } = await upsertOverRecentRow({
+        ...APPLICATION_ACTOR,
+      });
+
+      expect(insert).not.toHaveBeenCalled();
+      expect(update).toHaveBeenCalledWith(RECENT_ROW_ID, {
+        properties: {
+          diff: { name: { before: 'Before', after: 'Second' } },
+          actor: APPLICATION_ACTOR,
+        },
+        workspaceMemberId: undefined,
+      });
+    });
+
+    it('does not merge a row of another actor', async () => {
+      const apiKeyActor: ActorMetadata = {
+        source: FieldActorSource.API,
+        name: 'Zapier key',
+        workspaceMemberId: null,
+        context: {},
+      };
+
+      const { update, insert } = await upsertOverRecentRow(apiKeyActor);
+
+      expect(update).not.toHaveBeenCalled();
+      expect(insert).toHaveBeenCalledWith([
+        expect.objectContaining({
+          properties: {
+            diff: { name: { before: 'First', after: 'Second' } },
+            actor: apiKeyActor,
+          },
+        }),
+      ]);
+    });
   });
 });
