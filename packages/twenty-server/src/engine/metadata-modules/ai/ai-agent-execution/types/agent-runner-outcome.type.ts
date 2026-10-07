@@ -2,4 +2,4 @@ export type AgentRunnerOutcome =
   | { status: 'COMPLETED'; result: object }
   // paused on an answer or a wait; the engine continues the run and calls its caller back
   | { status: 'SUSPENDED'; suspensionId: string }
-  | { status: 'FAILED'; error: string };
+  | { status: 'FAILED'; error: string; errorCode?: string };

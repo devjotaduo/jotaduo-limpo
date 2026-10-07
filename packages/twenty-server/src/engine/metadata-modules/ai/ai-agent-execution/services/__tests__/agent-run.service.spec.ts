@@ -1,8 +1,16 @@
 import { Logger } from '@nestjs/common';
 
+import {
+  UsageLimitException,
+  UsageLimitExceptionCode,
+} from 'src/engine/core-modules/usage-limit/exceptions/usage-limit.exception';
 import { AgentRunService } from 'src/engine/metadata-modules/ai/ai-agent-execution/services/agent-run.service';
+import { type AgentRunSummary } from 'src/engine/metadata-modules/ai/ai-agent-execution/types/agent-run-summary.type';
 import { buildAgentRunThreadId } from 'src/engine/metadata-modules/ai/ai-agent-execution/utils/build-agent-run-thread-id.util';
-import { AiExceptionCode } from 'src/engine/metadata-modules/ai/ai.exception';
+import {
+  AiException,
+  AiExceptionCode,
+} from 'src/engine/metadata-modules/ai/ai.exception';
 
 const WORKSPACE = { id: 'workspace-id' } as never;
 const APPLICATION = { id: 'application-id' };
@@ -19,6 +27,44 @@ const RUN_AS_ACTOR = {
   workspaceMemberId: 'workspace-member-id',
   context: {},
 };
+const SUMMARY: AgentRunSummary = {
+  modelId: 'openai/gpt-5-mini',
+  usage: {
+    inputTokens: 1200,
+    outputTokens: 80,
+    reasoningTokens: 16,
+    cacheReadTokens: 1000,
+    cacheCreationTokens: 0,
+    totalTokens: 1280,
+  },
+  cost: { totalCostInDollars: 0.0004, creditsUsedMicro: 400 },
+  nativeWebSearchCallCount: 0,
+  toolCalls: [
+    {
+      toolName: 'find_companies',
+      toolCallId: 'call-id',
+      input: { limit: 1 },
+      output: { records: [{ name: 'Acme' }] },
+      state: 'success',
+    },
+  ],
+  durationMs: 2300,
+};
+const REPORTED_SUMMARY = {
+  modelId: 'openai/gpt-5-mini',
+  usage: {
+    inputTokens: 1200,
+    outputTokens: 80,
+    reasoningTokens: 16,
+    cacheReadTokens: 1000,
+    cacheCreationTokens: 0,
+    totalTokens: 1280,
+    nativeWebSearchCallCount: 0,
+  },
+  cost: { totalCostInDollars: 0.0004, creditsUsedMicro: 400 },
+  toolCalls: [{ toolName: 'find_companies', state: 'success' }],
+  durationMs: 2300,
+};
 const buildService = () => {
   const agentRunnerService = {
     run: jest.fn().mockImplementation(async ({ conversation }) => ({
@@ -27,6 +73,7 @@ const buildService = () => {
         status: 'COMPLETED',
         result: { response: 'Acme is your biggest customer' },
       },
+      summary: SUMMARY,
     })),
   };
   const agentActorContextService = {
@@ -89,6 +136,8 @@ describe('AgentRunService', () => {
       error: null,
       success: true,
       threadId: expect.any(String),
+      errorCode: null,
+      ...REPORTED_SUMMARY,
     });
     expect(secondResult.threadId).not.toBe(result.threadId);
 
@@ -207,7 +256,7 @@ describe('AgentRunService', () => {
     });
   });
 
-  it('reports a run that ran out of credits', async () => {
+  it('reports a run that ran out of credits with what it spent', async () => {
     const { service, agentRunnerService } = buildService();
 
     agentRunnerService.run.mockResolvedValue({
@@ -215,14 +264,18 @@ describe('AgentRunService', () => {
       outcome: {
         status: 'FAILED',
         error: 'Agent stopped: no more available credits.',
+        errorCode: 'CREDITS_EXHAUSTED',
       },
+      summary: SUMMARY,
     });
 
-    await expect(
-      run(service, { input: userInput('Hello') }),
-    ).resolves.toMatchObject({
+    await expect(run(service, { input: userInput('Hello') })).resolves.toEqual({
+      result: null,
       success: false,
       error: 'Agent stopped: no more available credits.',
+      errorCode: 'CREDITS_EXHAUSTED',
+      threadId: expect.any(String),
+      ...REPORTED_SUMMARY,
     });
   });
 
@@ -237,8 +290,116 @@ describe('AgentRunService', () => {
     ).resolves.toMatchObject({
       success: false,
       error: 'Agent execution failed.',
+      errorCode: 'AGENT_EXECUTION_FAILED',
     });
   });
+
+  it('reports the code of a usage limit that stopped the run', async () => {
+    const { service, agentRunnerService } = buildService();
+
+    jest.spyOn(Logger.prototype, 'error').mockImplementation();
+    agentRunnerService.run.mockRejectedValue(
+      new UsageLimitException(
+        'Usage limit reached for agent',
+        UsageLimitExceptionCode.QUOTA_EXHAUSTED,
+      ),
+    );
+
+    const result = await run(service, { input: userInput('Hello') });
+
+    expect(result).toMatchObject({
+      success: false,
+      error: 'Agent execution failed.',
+      errorCode: 'QUOTA_EXHAUSTED',
+    });
+    expect(result.usage).toBeUndefined();
+  });
+
+  it('keeps the provider message of a failed run from its caller', async () => {
+    const { service, agentRunnerService } = buildService();
+
+    jest.spyOn(Logger.prototype, 'error').mockImplementation();
+    agentRunnerService.run.mockRejectedValue(
+      new AiException(
+        'Request to http://litellm.internal:4000/v1/chat/completions failed',
+        AiExceptionCode.AGENT_EXECUTION_FAILED,
+      ),
+    );
+
+    const result = await run(service, { input: userInput('Hello') });
+
+    expect(JSON.stringify(result)).not.toContain('litellm');
+    expect(result).toMatchObject({
+      error: 'Agent execution failed.',
+      errorCode: 'AGENT_EXECUTION_FAILED',
+    });
+  });
+
+  it('runs without recording anything when persist is false', async () => {
+    const { service, agentRunnerService } = buildService();
+
+    const result = await run(service, {
+      input: userInput('Who is our biggest customer?'),
+      persist: false,
+    });
+
+    const { turn, execution } = runInput(agentRunnerService);
+
+    expect(turn).toBeNull();
+    expect(execution).toMatchObject({
+      messages: userInput('Who is our biggest customer?'),
+      toolLoadingStrategy: 'lazy',
+    });
+    expect(result).toEqual({
+      result: { response: 'Acme is your biggest customer' },
+      error: null,
+      success: true,
+      threadId: null,
+      errorCode: null,
+      ...REPORTED_SUMMARY,
+    });
+  });
+
+  it('reads a thread without adding to it when persist is false', async () => {
+    const { service, agentRunnerService } = buildService();
+
+    const result = await run(service, {
+      input: userInput('And the second one?'),
+      thread: { key: 'C123:1700000000.000100' },
+      persist: false,
+    });
+
+    const { conversation, turn } = runInput(agentRunnerService);
+
+    expect(conversation).toEqual({
+      threadId: buildAgentRunThreadId({
+        applicationId: APPLICATION.id,
+        agentId: AGENT.id,
+        threadKey: 'C123:1700000000.000100',
+      }),
+      isCreated: false,
+    });
+    expect(turn).toBeNull();
+    expect(result.threadId).toBeNull();
+  });
+
+  it.each([[true], [null], [undefined]])(
+    'records the run when persist is %s',
+    async (persist) => {
+      const { service, agentRunnerService } = buildService();
+
+      const result = await run(service, {
+        input: userInput('Who is our biggest customer?'),
+        persist,
+      });
+
+      expect(runInput(agentRunnerService).turn).toMatchObject({
+        title: AGENT.label,
+        messages: userInput('Who is our biggest customer?'),
+      });
+      expect(result.threadId).toEqual(expect.any(String));
+    },
+  );
 
   it('refuses a thread without an application token', async () => {
     const { service } = buildService();
@@ -251,6 +412,25 @@ describe('AgentRunService', () => {
       ),
     ).rejects.toMatchObject({ code: AiExceptionCode.RUN_AGENT_NOT_ALLOWED });
   });
+
+  it.each([
+    ['a member', 'caller-user-workspace-id'],
+    ['an API key', null],
+  ])(
+    'refuses to run without recording for %s',
+    async (_, requestUserWorkspaceId) => {
+      const { service, agentRunnerService } = buildService();
+
+      await expect(
+        run(
+          service,
+          { input: userInput('Hello'), persist: false },
+          { isCalledByApplication: false, requestUserWorkspaceId },
+        ),
+      ).rejects.toMatchObject({ code: AiExceptionCode.RUN_AGENT_NOT_ALLOWED });
+      expect(agentRunnerService.run).not.toHaveBeenCalled();
+    },
+  );
 
   it('refuses a thread with a blank key', async () => {
     const { service, agentRunnerService } = buildService();

@@ -16,6 +16,7 @@ export type AgentRunnerRunInput = {
   conversationActor?: AgentConversationActor;
 } & (
   | {
+      // null runs the agent without recording it, so its conversation holds nothing of the run
       turn: {
         // names the thread when the turn creates it
         title: string;
@@ -24,7 +25,7 @@ export type AgentRunnerRunInput = {
         messages: RunAgentMessage[];
         // resolved while recording the turn, so a failed lookup does not stop the run
         resolveCreatedBy: () => Promise<ActorMetadata>;
-      };
+      } | null;
       execution: Omit<
         Parameters<AgentAsyncExecutorService['executeAgent']>[0],
         'priorMessages'

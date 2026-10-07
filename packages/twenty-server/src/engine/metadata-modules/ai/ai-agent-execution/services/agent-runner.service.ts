@@ -29,6 +29,7 @@ import { sumAgentRunSummaries } from 'src/engine/metadata-modules/ai/ai-agent-ex
 import { AgentEntity } from 'src/engine/metadata-modules/ai/ai-agent/entities/agent.entity';
 import { createAskQuestionTool } from 'src/engine/metadata-modules/ai/ai-chat/tools/ask-question.tool';
 import { createRequestFormTool } from 'src/engine/metadata-modules/ai/ai-chat/tools/request-form.tool';
+import { AGENT_TURN_CREDITS_EXHAUSTED_ERROR } from 'src/engine/metadata-modules/ai/ai-history/constants/agent-turn-credits-exhausted-error.constant';
 import { AgentConversationReaderService } from 'src/engine/metadata-modules/ai/ai-history/services/agent-conversation-reader.service';
 import { withDedicatedAiTrace } from 'src/engine/metadata-modules/ai/ai-models/utils/with-dedicated-ai-trace.util';
 import {
@@ -204,18 +205,20 @@ export class AgentRunnerService {
         });
     const agentId = execution.agent?.id ?? null;
 
-    const turnId = await this.recordConversation(threadId, async () =>
-      this.agentRunConversationService.openTurn({
-        workspaceId,
-        threadId,
-        title: turn.title,
-        agentId,
-        senderUserWorkspaceId: turn.senderUserWorkspaceId,
-        senderApplicationId: turn.senderApplicationId,
-        createdBy: await turn.resolveCreatedBy(),
-        messages: turn.messages,
-      }),
-    );
+    const turnId = isDefined(turn)
+      ? await this.recordConversation(threadId, async () =>
+          this.agentRunConversationService.openTurn({
+            workspaceId,
+            threadId,
+            title: turn.title,
+            agentId,
+            senderUserWorkspaceId: turn.senderUserWorkspaceId,
+            senderApplicationId: turn.senderApplicationId,
+            createdBy: await turn.resolveCreatedBy(),
+            messages: turn.messages,
+          }),
+        )
+      : null;
 
     const startedAtMs = Date.now();
 
@@ -244,19 +247,20 @@ export class AgentRunnerService {
 
     const durationMs = Date.now() - startedAtMs;
 
-    const closedTurn = isDefined(turnId)
-      ? await this.recordConversation(threadId, () =>
-          this.agentRunConversationService.closeTurn({
-            workspaceId,
-            threadId,
-            turnId,
-            title: turn.title,
-            agentId,
-            execution: executionResult,
-            isAwaitedByCaller: isDefined(callerRun),
-          }),
-        )
-      : null;
+    const closedTurn =
+      isDefined(turn) && isDefined(turnId)
+        ? await this.recordConversation(threadId, () =>
+            this.agentRunConversationService.closeTurn({
+              workspaceId,
+              threadId,
+              turnId,
+              title: turn.title,
+              agentId,
+              execution: executionResult,
+              isAwaitedByCaller: isDefined(callerRun),
+            }),
+          )
+        : null;
 
     const summary = sumAgentRunSummaries({
       previousSummary: suspension?.summary ?? null,
@@ -337,6 +341,7 @@ export class AgentRunnerService {
         return {
           status: 'FAILED',
           error: 'Agent stopped: no more available credits.',
+          errorCode: AGENT_TURN_CREDITS_EXHAUSTED_ERROR.code,
         };
       }
 
