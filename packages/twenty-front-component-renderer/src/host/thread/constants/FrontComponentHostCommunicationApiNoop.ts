@@ -16,6 +16,10 @@ export const FRONT_COMPONENT_HOST_COMMUNICATION_API_NOOP: FrontComponentHostComm
       status: 'failed',
       reason: 'picker-unavailable',
     }),
+    watchRecordChanges: async () => ({
+      status: 'failed',
+      reason: 'unavailable',
+    }),
     storageSet: async () => {},
     storageDelete: async () => {},
     storageClear: async () => {},

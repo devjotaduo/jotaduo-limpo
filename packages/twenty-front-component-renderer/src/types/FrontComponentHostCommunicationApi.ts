@@ -15,6 +15,7 @@ import {
 } from 'twenty-sdk/front-component';
 
 import { type PickAndUploadFileFunction } from '@/types/PickAndUploadFileFunction';
+import { type WatchRecordChangesFunction } from '@/types/WatchRecordChangesFunction';
 
 export type FrontComponentHostCommunicationApi = {
   navigate: NavigateFunction;
@@ -28,6 +29,7 @@ export type FrontComponentHostCommunicationApi = {
   copyToClipboard: CopyToClipboardFunction;
   uploadFile: UploadFileFunction;
   pickAndUploadFile: PickAndUploadFileFunction;
+  watchRecordChanges: WatchRecordChangesFunction;
   storageSet: StorageSetFunction;
   storageDelete: StorageDeleteFunction;
   storageClear: StorageClearFunction;

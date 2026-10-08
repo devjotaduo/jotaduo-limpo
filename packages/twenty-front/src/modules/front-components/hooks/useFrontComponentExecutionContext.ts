@@ -12,8 +12,8 @@ import {
   clearFrontComponentStorage,
   deleteFrontComponentStorageItem,
   setFrontComponentStorageItem,
-  type FrontComponentExecutionContext,
   type FrontComponentHostCommunicationApi,
+  type FrontComponentHostExecutionContext,
 } from 'twenty-front-component-renderer';
 import { type AppLocale } from 'twenty-shared/translations';
 import {
@@ -37,6 +37,7 @@ import { contextStoreRecordShowParentViewComponentState } from '@/context-store/
 import { useDirectFileUpload } from '@/file/hooks/useDirectFileUpload';
 import { useFrontComponentApplicationTokenPair } from '@/front-components/hooks/useFrontComponentApplicationTokenPair';
 import { useFrontComponentPickAndUploadFile } from '@/front-components/hooks/useFrontComponentPickAndUploadFile';
+import { useFrontComponentWatchRecordChanges } from '@/front-components/hooks/useFrontComponentWatchRecordChanges';
 import { useResolveStandalonePageLayoutId } from '@/front-components/hooks/useResolveStandalonePageLayoutId';
 import { getMediaFileExtension } from '@/front-components/media-session/utils/getMediaFileExtension';
 import { frontComponentsSelector } from '@/front-components/states/frontComponentsSelector';
@@ -144,7 +145,7 @@ export const useFrontComponentExecutionContext = ({
   toolCall?: FrontComponentToolCall;
   colorScheme: 'light' | 'dark';
 }): {
-  executionContext: FrontComponentExecutionContext;
+  executionContext: FrontComponentHostExecutionContext;
   frontComponentHostCommunicationApi: FrontComponentHostCommunicationApi;
   storageNamespace?: string;
 } => {
@@ -179,6 +180,8 @@ export const useFrontComponentExecutionContext = ({
   const { copyToClipboardWithoutSuccessToast } = useCopyToClipboard();
   const { uploadFile: uploadFileToFilesField } = useDirectFileUpload();
   const { resolveStandalonePageLayoutId } = useResolveStandalonePageLayoutId();
+  const { watchRecordChanges, recordChangeCounters } =
+    useFrontComponentWatchRecordChanges({ applicationId });
   const { i18n } = useLingui();
   // oxlint-disable-next-line twenty/no-state-useref
   const lastCopyToClipboardCallAtRef = useRef<number>(Number.NEGATIVE_INFINITY);
@@ -457,7 +460,7 @@ export const useFrontComponentExecutionContext = ({
       });
     };
 
-  const executionContext: FrontComponentExecutionContext = {
+  const executionContext: FrontComponentHostExecutionContext = {
     frontComponentId,
     userId: currentUser?.id ?? null,
     recordId: selectedRecordIds?.length === 1 ? selectedRecordIds[0] : null,
@@ -475,6 +478,7 @@ export const useFrontComponentExecutionContext = ({
     colorScheme,
     // The host is always configured with APP_LOCALES, so this is a valid AppLocale.
     locale: i18n.locale as AppLocale,
+    recordChangeCounters,
   };
 
   const unmountFrontComponent: FrontComponentHostCommunicationApi['unmountFrontComponent'] =
@@ -647,6 +651,7 @@ export const useFrontComponentExecutionContext = ({
       copyToClipboard,
       uploadFile: hostUploadFile,
       pickAndUploadFile,
+      watchRecordChanges,
       storageSet,
       storageDelete,
       storageClear,

@@ -4,6 +4,8 @@ import {
   FRONT_COMPONENT_LISTENERS_KEY,
 } from 'twenty-sdk/front-component-renderer';
 
+import { type FrontComponentHostExecutionContext } from '@/types/WatchRecordChangesFunction';
+
 import { setFrontComponentExecutionContext } from '../setFrontComponentExecutionContext';
 
 const EXECUTION_CONTEXT: FrontComponentExecutionContext = {
@@ -89,5 +91,42 @@ describe('setFrontComponentExecutionContext', () => {
     );
 
     expect(observedColorSchemes).toEqual(['dark']);
+  });
+
+  it('should deliver record change counters and keep their reference while unchanged', () => {
+    const getStoredRecordChangeCounters = () =>
+      (getStoredExecutionContext() as FrontComponentHostExecutionContext)
+        .recordChangeCounters;
+    const buildExecutionContextWithMessageCount = (
+      messageCount: number,
+    ): FrontComponentHostExecutionContext => ({
+      ...EXECUTION_CONTEXT,
+      recordChangeCounters: { message: messageCount },
+    });
+    const observedMessageCounts: (number | undefined)[] = [];
+
+    (globalThis as Record<string, unknown>)[FRONT_COMPONENT_LISTENERS_KEY] =
+      new Set([
+        () =>
+          observedMessageCounts.push(getStoredRecordChangeCounters()?.message),
+      ]);
+
+    setFrontComponentExecutionContext(
+      cloneExecutionContext(buildExecutionContextWithMessageCount(0)),
+    );
+
+    const initialRecordChangeCounters = getStoredRecordChangeCounters();
+
+    setFrontComponentExecutionContext(
+      cloneExecutionContext(buildExecutionContextWithMessageCount(0)),
+    );
+
+    expect(getStoredRecordChangeCounters()).toBe(initialRecordChangeCounters);
+
+    setFrontComponentExecutionContext(
+      cloneExecutionContext(buildExecutionContextWithMessageCount(1)),
+    );
+
+    expect(observedMessageCounts).toEqual([0, 0, 1]);
   });
 });

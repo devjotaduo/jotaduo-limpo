@@ -5,6 +5,8 @@ import { getDefaultStore } from 'jotai';
 import { type AppLocale } from 'twenty-shared/translations';
 import { AppPath, SidePanelPages } from 'twenty-shared/types';
 
+import { type ObjectRecordOperationBrowserEventDetail } from '@/browser-event/types/ObjectRecordOperationBrowserEventDetail';
+import { dispatchObjectRecordOperationBrowserEvent } from '@/browser-event/utils/dispatchObjectRecordOperationBrowserEvent';
 import { MAIN_CONTEXT_STORE_INSTANCE_ID } from '@/context-store/constants/MainContextStoreInstanceId';
 import { contextStoreRecordShowParentViewComponentState } from '@/context-store/states/contextStoreRecordShowParentViewComponentState';
 import { useFrontComponentExecutionContext } from '@/front-components/hooks/useFrontComponentExecutionContext';
@@ -17,7 +19,11 @@ jest.mock('@/object-metadata/hooks/useObjectMetadataItems', () => ({
   useObjectMetadataItems: () => ({
     objectMetadataItems: [
       { nameSingular: 'workflow', openRecordIn: 'RECORD_PAGE' },
-      { nameSingular: 'lead', openRecordIn: 'USER_CHOICE' },
+      {
+        nameSingular: 'lead',
+        openRecordIn: 'USER_CHOICE',
+        applicationId: 'application-test-id',
+      },
     ],
   }),
 }));
@@ -1170,6 +1176,39 @@ describe('useFrontComponentExecutionContext', () => {
       });
 
       expect(mockSetCommandMenuItemProgress).toHaveBeenCalledWith(100);
+    });
+  });
+
+  describe('watchRecordChanges', () => {
+    it('should expose the counters of the watched objects in the execution context', async () => {
+      const { result } = renderUseFrontComponentExecutionContext({
+        frontComponentId: FRONT_COMPONENT_ID,
+      });
+
+      expect(
+        result.current.executionContext.recordChangeCounters,
+      ).toBeUndefined();
+
+      await act(async () => {
+        await result.current.frontComponentHostCommunicationApi.watchRecordChanges(
+          { objectNameSingulars: ['lead'] },
+        );
+      });
+
+      expect(result.current.executionContext.recordChangeCounters).toEqual({
+        lead: 0,
+      });
+
+      act(() => {
+        dispatchObjectRecordOperationBrowserEvent({
+          objectMetadataItem: { nameSingular: 'lead' },
+          operation: { type: 'create-many' },
+        } as ObjectRecordOperationBrowserEventDetail);
+      });
+
+      expect(result.current.executionContext.recordChangeCounters).toEqual({
+        lead: 1,
+      });
     });
   });
 

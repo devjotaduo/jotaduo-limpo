@@ -148,6 +148,10 @@ export { installStyleBridge } from '@/polyfills/style/utils/installStyleBridge';
 export { exposeGlobals } from '@/utils/exposeGlobals';
 export type { FrontComponentExecutionContext } from 'twenty-sdk/front-component';
 export type { FrontComponentHostCommunicationApi } from '@/types/FrontComponentHostCommunicationApi';
+export type {
+  FrontComponentHostExecutionContext,
+  FrontComponentRecordChangeCounters,
+} from '@/types/WatchRecordChangesFunction';
 export { setFrontComponentStorageItem } from '@/host/storage/utils/setFrontComponentStorageItem';
 export { deleteFrontComponentStorageItem } from '@/host/storage/utils/deleteFrontComponentStorageItem';
 export { clearFrontComponentStorage } from '@/host/storage/utils/clearFrontComponentStorage';

@@ -15,6 +15,7 @@ const createHostThreadImportsStub = () =>
     copyToClipboard: jest.fn(),
     uploadFile: jest.fn(),
     pickAndUploadFile: jest.fn(),
+    watchRecordChanges: jest.fn(),
     storageSet: jest.fn(),
     storageDelete: jest.fn(),
     storageClear: jest.fn(),
@@ -49,6 +50,7 @@ describe('buildFrontComponentHostCommunicationApiFromThreadImports', () => {
       'unmountFrontComponent',
       'updateProgress',
       'uploadFile',
+      'watchRecordChanges',
     ]);
     expect(hostCommunicationApi.navigate).toBe(hostThreadImports.navigate);
     expect(hostCommunicationApi.requestAccessTokenRefresh).toBe(
@@ -63,6 +65,9 @@ describe('buildFrontComponentHostCommunicationApiFromThreadImports', () => {
     expect(hostCommunicationApi.uploadFile).toBe(hostThreadImports.uploadFile);
     expect(hostCommunicationApi.pickAndUploadFile).toBe(
       hostThreadImports.pickAndUploadFile,
+    );
+    expect(hostCommunicationApi.watchRecordChanges).toBe(
+      hostThreadImports.watchRecordChanges,
     );
     expect(hostCommunicationApi.enqueueSnackbar).toBe(
       hostThreadImports.enqueueSnackbar,
