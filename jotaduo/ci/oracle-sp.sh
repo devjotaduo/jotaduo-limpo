@@ -22,8 +22,9 @@ if ! sudo -n test -d "$RUNNER_DATA/$WORKDIR_NAME/.git"; then
   sudo -n mkdir -p "$RUNNER_DATA/$WORKDIR_NAME"
   sudo -n git -C "$RUNNER_DATA/$WORKDIR_NAME" init -q
   sudo -n git -C "$RUNNER_DATA/$WORKDIR_NAME" fetch -q --depth 1 "$REPO_URL" "$BRANCH"
-  sudo -n git -C "$RUNNER_DATA/$WORKDIR_NAME" checkout -q "$COMMIT"
 fi
+# o runner pede um branch para montar o contexto do job; um HEAD solto só gera avisos
+sudo -n git -C "$RUNNER_DATA/$WORKDIR_NAME" checkout -q -B jotaduo-checagem "$COMMIT"
 
 echo "Checagem de $COMMIT em $RUNNER_DATA/$WORKDIR_NAME; saída em $REPORT_DIR/runner.log"
 sudo -n docker exec "$RUNNER_CONTAINER" forgejo-runner exec \

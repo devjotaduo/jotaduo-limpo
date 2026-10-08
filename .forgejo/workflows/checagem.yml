@@ -4,9 +4,6 @@ on: [push]
 jobs:
   checagem:
     runs-on: docker
-    defaults:
-      run:
-        working-directory: /workspace
     steps:
       - name: Prepare as ferramentas
         run: apk add --no-cache bash git
