@@ -52,11 +52,11 @@ describe('getNativeOnboardingProgress', () => {
   it('counts a step without a segment as the one before it', () => {
     expect(
       getNativeOnboardingProgress({
-        pathname: AppPath.InstallApps,
+        pathname: AppPath.BookCall,
         hasEmailProvider: true,
         isFirstWorkspaceMember: true,
       }),
-    ).toEqual({ stepCount: 3, filledStepCount: 1 });
+    ).toEqual({ stepCount: 3, filledStepCount: 3 });
 
     expect(
       getNativeOnboardingProgress({
@@ -70,7 +70,7 @@ describe('getNativeOnboardingProgress', () => {
   it('fills the first segment before any counted step is reached', () => {
     expect(
       getNativeOnboardingProgress({
-        pathname: AppPath.InstallApps,
+        pathname: AppPath.SyncEmails,
         hasEmailProvider: false,
         isFirstWorkspaceMember: true,
       }),

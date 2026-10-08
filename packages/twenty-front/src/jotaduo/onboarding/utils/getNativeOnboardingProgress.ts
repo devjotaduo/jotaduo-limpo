@@ -8,9 +8,9 @@ type GetNativeOnboardingProgressParams = {
   isFirstWorkspaceMember: boolean;
 };
 
-// Only the steps a person is sure to go through get a segment. Installing
-// apps, booking a call and picking a plan depend on what the server offers
-// at that moment, so they count as the step before them.
+// Only the steps a person is sure to go through get a segment. Booking a
+// call and picking a plan depend on what the server offers at that moment,
+// so they count as the step before them.
 export const getNativeOnboardingProgress = ({
   pathname,
   hasEmailProvider,
