@@ -219,10 +219,14 @@ export class SdkProviderFactoryService {
       throw new Error('baseUrl is required for openai-compatible providers');
     }
 
+    // without supportsStructuredOutputs a JSON call reaches the endpoint as json_object with no schema
     const provider = createOpenAICompatible({
       name: config.name ?? 'openai-compatible',
       baseURL: config.baseUrl,
       ...(config.apiKey && { apiKey: config.apiKey }),
+      ...(config.supportsStructuredOutputs === true && {
+        supportsStructuredOutputs: true,
+      }),
     });
 
     return this.toProviderInstance(

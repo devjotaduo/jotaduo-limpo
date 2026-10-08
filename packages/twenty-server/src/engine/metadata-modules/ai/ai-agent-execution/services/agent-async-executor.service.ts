@@ -62,6 +62,7 @@ import { type AgentToolLoadingStrategy } from 'src/engine/metadata-modules/ai/ai
 import { assertAgentResponseFormatHasOutputFieldsOrThrow } from 'src/engine/metadata-modules/ai/ai-agent-execution/utils/assert-agent-response-format-has-output-fields-or-throw.util';
 import { buildAgentRolePermissionConfig } from 'src/engine/metadata-modules/ai/ai-agent-execution/utils/build-agent-role-permission-config.util';
 import { buildStrictAgentResponseSchema } from 'src/engine/metadata-modules/ai/ai-agent-execution/utils/build-strict-agent-response-schema.util';
+import { buildStructuredOutputPrompt } from 'src/engine/metadata-modules/ai/ai-agent-execution/utils/build-structured-output-prompt.util';
 import { AGENT_CONFIG } from 'src/engine/metadata-modules/ai/ai-agent/constants/agent-config.const';
 import { STRUCTURED_OUTPUT_SYSTEM_PROMPT } from 'src/engine/metadata-modules/ai/ai-agent/constants/structured-output-system-prompt.const';
 import { type AgentEntity } from 'src/engine/metadata-modules/ai/ai-agent/entities/agent.entity';
@@ -516,11 +517,19 @@ export class AgentAsyncExecutorService {
       };
       const offeredToolNames = Object.keys(offeredPausingTools);
 
+      const agentInstructions = isDefined(agent)
+        ? tipTapDocumentToMarkdown(agent.prompt)
+        : '';
+      const conversationModelMessages = [
+        ...priorModelMessages,
+        ...modelMessages,
+      ];
+
       const textResponse = await generateText({
-        instructions: `${baseSystemPrompt}\n\n${agent ? tipTapDocumentToMarkdown(agent.prompt) : ''}${toolCatalogSection}`,
+        instructions: `${baseSystemPrompt}\n\n${agentInstructions}${toolCatalogSection}`,
         tools: { ...tools, ...offeredPausingTools },
         model: registeredModel.model,
-        messages: [...priorModelMessages, ...modelMessages],
+        messages: conversationModelMessages,
         stopWhen: (step) =>
           isStepCount(AGENT_CONFIG.MAX_STEPS)(step) ||
           endsOnPausingToolCall({ steps: step.steps, offeredToolNames }) ||
@@ -626,16 +635,21 @@ export class AgentAsyncExecutorService {
       });
 
       if (isDefined(agentSchema) && !endsOnPausingTool) {
+        const strictAgentSchema = buildStrictAgentResponseSchema(agentSchema);
+
+        // without the request and the tool results the answer alone often lacks what the fields need
         const structuredResult = await generateText({
           instructions: STRUCTURED_OUTPUT_SYSTEM_PROMPT,
           model: registeredModel.model,
-          prompt: `Based on the following execution results, generate the structured output according to the schema:
-
-                 Execution Results: ${textResponse.text}
-
-                 Please generate the structured output based on the execution results and context above.`,
+          prompt: buildStructuredOutputPrompt({
+            agentInstructions,
+            conversationMessages: conversationModelMessages,
+            executionMessages: textResponse.responseMessages,
+            response: textResponse.text,
+            schema: strictAgentSchema,
+          }),
           output: Output.object({
-            schema: jsonSchema(buildStrictAgentResponseSchema(agentSchema)),
+            schema: jsonSchema(strictAgentSchema),
           }),
           providerOptions: getCallLevelProviderOptions({
             sdkPackage: registeredModel.sdkPackage,
