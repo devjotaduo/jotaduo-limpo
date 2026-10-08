@@ -146,7 +146,9 @@ describe('ThinkingStepsDisplay', () => {
     expect(
       screen.getByText('Searched the web for crm software'),
     ).toBeInTheDocument();
-    expect(document.querySelector('svg[viewBox="0 0 14 14"]')).not.toBeNull();
+    expect(
+      document.querySelector('[data-ai-avatar-state="thinking"]'),
+    ).not.toBeNull();
   });
 
   it('should render the loading label for a tool step awaiting its output while streaming', () => {

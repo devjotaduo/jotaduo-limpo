@@ -5,11 +5,15 @@ import { styled } from '@linaria/react';
 import { AiChatSuggestedPrompts } from '@/ai/components/suggested-prompts/AiChatSuggestedPrompts';
 import { useShouldShowAiChatEmptyState } from '@/ai/hooks/useShouldShowAiChatEmptyState';
 
-const StyledEmptyState = styled(StyledAiChatContentContainer)`
+// on the page the welcome sits right above the centered composer; in the side panel the composer
+// stays at the bottom, so the welcome takes the middle of the space above it
+const StyledEmptyState = styled(StyledAiChatContentContainer)<{
+  isCentered: boolean;
+}>`
   display: flex;
   flex: 1;
   flex-direction: column;
-  justify-content: flex-end;
+  justify-content: ${({ isCentered }) => (isCentered ? 'flex-end' : 'center')};
 `;
 
 type AiChatEmptyStateProps = {
@@ -28,7 +32,7 @@ export const AiChatEmptyState = ({
   }
 
   return (
-    <StyledEmptyState>
+    <StyledEmptyState isCentered={isCentered}>
       <AiChatSuggestedPrompts isCentered={isCentered} />
     </StyledEmptyState>
   );

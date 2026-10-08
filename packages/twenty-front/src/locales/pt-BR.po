@@ -24676,7 +24676,7 @@ msgstr "Bem-vindo, {workspaceName}."
 #. js-lingui-id: Itn+J7
 #: src/modules/ai/components/suggested-prompts/AiChatSuggestedPrompts.tsx
 msgid "What can I help you with?"
-msgstr "Com o que posso ajudar?"
+msgstr "Como posso ajudar?"
 
 #. js-lingui-id: ivJ1Xk
 #: src/modules/ai/components/suggested-prompts/default-suggested-prompts.ts
@@ -25530,3 +25530,27 @@ msgstr "Aumentar zoom"
 #: src/modules/settings/data-model/graph-overview/components/SettingsDataModelOverview.tsx
 msgid "Zoom out"
 msgstr "Diminuir zoom"
+
+#: src/modules/ai/hooks/useAiChatEditor.ts
+msgid "Ask anything, @ a teammate or record, / a skill..."
+msgstr "Pergunte, pesquise ou peça qualquer coisa..."
+
+#: src/modules/ai/components/suggested-prompts/default-suggested-prompts.ts
+msgid "Create a reminder"
+msgstr "Criar um lembrete"
+
+#: src/modules/ai/components/suggested-prompts/default-suggested-prompts.ts
+msgid "Create a reminder for me: "
+msgstr "Crie um lembrete para mim: "
+
+#: src/modules/ai/components/suggested-prompts/default-suggested-prompts.ts
+msgid "Add a customer"
+msgstr "Cadastrar um cliente"
+
+#: src/modules/ai/components/suggested-prompts/default-suggested-prompts.ts
+msgid "Add a new customer (name, phone, email). Details: "
+msgstr "Cadastre um novo cliente (nome, telefone e e-mail). Dados: "
+
+#: src/modules/ai/components/suggested-prompts/default-suggested-prompts.ts
+msgid "See what I know how to do"
+msgstr "Ver o que eu sei fazer"

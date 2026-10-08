@@ -2,7 +2,6 @@ import { isDefined } from 'twenty-shared/utils';
 import { styled } from '@linaria/react';
 import { t } from '@lingui/core/macro';
 import { useLingui } from '@lingui/react/macro';
-import { LightButton } from 'twenty-ui/components/input';
 import { Button } from 'twenty-ui/primitives/input';
 import { themeCssVariables } from 'twenty-ui/theme';
 
@@ -16,44 +15,27 @@ import { currentAiChatThreadState } from '@/ai/states/currentAiChatThreadState';
 import { type SuggestedPrompt } from '@/ai/types/SuggestedPrompt';
 import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 
-const StyledContainer = styled.div<{ isCentered: boolean }>`
-  align-items: ${({ isCentered }) => (isCentered ? 'center' : 'stretch')};
+// the page and the side panel show the same welcome (AI/Chat body, Empty?): face, title and
+// prompts centered; only the face is smaller in the panel
+const StyledContainer = styled.div`
+  align-items: center;
   display: flex;
   flex-direction: column;
-  gap: ${({ isCentered }) =>
-    isCentered ? themeCssVariables.spacing[4] : themeCssVariables.spacing[2]};
-  padding: ${({ isCentered }) =>
-    isCentered ? themeCssVariables.spacing[4] : themeCssVariables.spacing[2]};
+  gap: ${themeCssVariables.spacing[4]};
+  padding: ${themeCssVariables.spacing[4]};
 `;
 
-const StyledAvatarContainer = styled.div<{ isCentered: boolean }>`
-  display: flex;
-  justify-content: ${({ isCentered }) => (isCentered ? 'center' : 'flex-start')};
-  padding: 0
-    ${({ isCentered }) => (isCentered ? '0' : themeCssVariables.spacing[2])};
-`;
-
-const StyledTitle = styled.div<{ isCentered: boolean }>`
-  align-content: center;
+const StyledTitle = styled.div`
   color: ${themeCssVariables.font.color.primary};
-  display: grid;
-  font-size: ${({ isCentered }) =>
-    isCentered
-      ? themeCssVariables.font.size.xl
-      : themeCssVariables.font.size.sm};
-  font-weight: ${({ isCentered }) =>
-    isCentered
-      ? themeCssVariables.font.weight.semiBold
-      : themeCssVariables.font.weight.medium};
-  height: ${({ isCentered }) => (isCentered ? 'auto' : '24px')};
-  padding: 0 ${themeCssVariables.spacing[2]};
-  text-align: ${({ isCentered }) => (isCentered ? 'center' : 'left')};
+  font-size: ${themeCssVariables.font.size.xl};
+  font-weight: ${themeCssVariables.font.weight.semiBold};
+  text-align: center;
 `;
 
-const StyledPromptList = styled.div<{ isCentered: boolean }>`
-  align-items: ${({ isCentered }) => (isCentered ? 'center' : 'flex-start')};
+const StyledPromptList = styled.div`
+  align-items: center;
   display: flex;
-  flex-direction: ${({ isCentered }) => (isCentered ? 'row' : 'column')};
+  flex-direction: row;
   flex-wrap: wrap;
   gap: ${themeCssVariables.spacing[2]};
   justify-content: center;
@@ -89,38 +71,24 @@ export const AiChatSuggestedPrompts = ({
   };
 
   return (
-    <StyledContainer isCentered={isCentered}>
-      <StyledAvatarContainer isCentered={isCentered}>
-        <AiChatAvatar size={isCentered ? 40 : 24} />
-      </StyledAvatarContainer>
-      <StyledTitle isCentered={isCentered}>
-        {t`What can I help you with?`}
-      </StyledTitle>
-      <StyledPromptList isCentered={isCentered}>
-        {suggestedPrompts.map((suggestedPrompt) => {
-          const startIcon = isDefined(suggestedPrompt.Icon) ? (
-            <suggestedPrompt.Icon />
-          ) : undefined;
-
-          return isCentered ? (
-            <Button
-              key={suggestedPrompt.id}
-              startIcon={startIcon}
-              onClick={() => handleClick(suggestedPrompt)}
-              variant="outline"
-            >
-              {resolveMessage(suggestedPrompt.label)}
-            </Button>
-          ) : (
-            <LightButton
-              key={suggestedPrompt.id}
-              startIcon={startIcon}
-              onClick={() => handleClick(suggestedPrompt)}
-            >
-              {resolveMessage(suggestedPrompt.label)}
-            </LightButton>
-          );
-        })}
+    <StyledContainer>
+      <AiChatAvatar size={isCentered ? 40 : 32} shouldBlink />
+      <StyledTitle>{t`What can I help you with?`}</StyledTitle>
+      <StyledPromptList>
+        {suggestedPrompts.map((suggestedPrompt) => (
+          <Button
+            key={suggestedPrompt.id}
+            startIcon={
+              isDefined(suggestedPrompt.Icon) ? (
+                <suggestedPrompt.Icon />
+              ) : undefined
+            }
+            onClick={() => handleClick(suggestedPrompt)}
+            variant="outline"
+          >
+            {resolveMessage(suggestedPrompt.label)}
+          </Button>
+        ))}
       </StyledPromptList>
     </StyledContainer>
   );

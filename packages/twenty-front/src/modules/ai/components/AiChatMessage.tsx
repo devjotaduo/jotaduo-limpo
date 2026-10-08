@@ -9,6 +9,7 @@ import { AgentChatFilePreview } from '@/ai/components/internal/AgentChatFilePrev
 import { AGENT_MESSAGE_ROLE } from '@/ai/constants/AgentMessageRole';
 
 import { AiChatAssistantMessageRenderer } from '@/ai/components/AiChatAssistantMessageRenderer';
+import { AiChatAvatar } from '@/ai/components/AiChatAvatar';
 import { AiChatErrorRenderer } from '@/ai/components/AiChatErrorRenderer';
 import { agentChatFirstUnreadMessageIdSelector } from '@/ai/states/selectors/agentChatFirstUnreadMessageIdSelector';
 import { agentChatIsMessageBeforeFirstUserMessageFamilySelector } from '@/ai/states/selectors/agentChatIsMessageBeforeFirstUserMessageFamilySelector';
@@ -39,6 +40,12 @@ const StyledMessageBubble = styled.div<{ isUser?: boolean }>`
     opacity: 1;
     pointer-events: auto;
   }
+`;
+
+// the AI's face opens each of its replies: dots while the reply streams, eyes once it is done
+const StyledAssistantFace = styled.div`
+  display: flex;
+  margin-bottom: ${themeCssVariables.spacing[1]};
 `;
 
 const StyledMessageText = styled.div<{ isUser?: boolean }>`
@@ -251,7 +258,12 @@ export const AiChatMessage = ({
               {messageContent}
             </AiChatUserMessageText>
           ) : (
-            <StyledMessageText>{messageContent}</StyledMessageText>
+            <>
+              <StyledAssistantFace>
+                <AiChatAvatar size={16} isThinking={isLastMessageStreaming} />
+              </StyledAssistantFace>
+              <StyledMessageText>{messageContent}</StyledMessageText>
+            </>
           )}
           {fileParts.length > 0 && (
             <StyledFilesContainer>
