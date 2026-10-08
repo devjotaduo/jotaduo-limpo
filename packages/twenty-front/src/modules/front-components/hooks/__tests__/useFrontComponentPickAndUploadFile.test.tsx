@@ -1,6 +1,8 @@
 import { renderHook } from '@testing-library/react';
+import { getDefaultStore } from 'jotai';
 
 import { useFrontComponentPickAndUploadFile } from '@/front-components/hooks/useFrontComponentPickAndUploadFile';
+import { metadataStoreState } from '@/metadata-store/states/metadataStoreState';
 
 jest.mock('@/object-metadata/hooks/useObjectMetadataItems', () => ({
   useObjectMetadataItems: () => ({ objectMetadataItems: [] }),
@@ -157,5 +159,39 @@ describe('useFrontComponentPickAndUploadFile', () => {
     await expect(
       pickAndUploadFile({ fieldMetadataId: 'files-field-id' }),
     ).resolves.toEqual({ status: 'failed', reason: 'upload-failed' });
+  });
+
+  it('should accept the field universalIdentifier in place of its id', async () => {
+    const store = getDefaultStore();
+    const fieldMetadataItemsAtom =
+      metadataStoreState.atomFamily('fieldMetadataItems');
+    const previousFieldMetadataItems = store.get(fieldMetadataItemsAtom);
+
+    store.set(fieldMetadataItemsAtom, {
+      current: [
+        { id: 'files-field-id', universalIdentifier: 'files-field-uid' },
+      ],
+      draft: [],
+      status: 'up-to-date',
+    });
+    mockPickFileFromComputer.mockResolvedValue(
+      new File(['content'], 'contract.pdf', { type: 'application/pdf' }),
+    );
+    mockUploadFile.mockResolvedValue({
+      status: 'uploaded',
+      file: UPLOADED_FILE,
+    });
+
+    const pickAndUploadFile = renderPickAndUploadFile();
+
+    await expect(
+      pickAndUploadFile({ fieldMetadataId: 'files-field-uid' }),
+    ).resolves.toMatchObject({ status: 'uploaded' });
+    expect(mockUploadFile).toHaveBeenCalledWith(expect.any(File), {
+      fieldMetadataId: 'files-field-id',
+      fileName: 'contract.pdf',
+    });
+
+    store.set(fieldMetadataItemsAtom, previousFieldMetadataItems);
   });
 });

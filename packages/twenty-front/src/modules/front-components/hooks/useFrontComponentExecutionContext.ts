@@ -37,7 +37,11 @@ import { contextStoreRecordShowParentViewComponentState } from '@/context-store/
 import { useDirectFileUpload } from '@/file/hooks/useDirectFileUpload';
 import { useFrontComponentApplicationTokenPair } from '@/front-components/hooks/useFrontComponentApplicationTokenPair';
 import { useFrontComponentPickAndUploadFile } from '@/front-components/hooks/useFrontComponentPickAndUploadFile';
+import { useResolveStandalonePageLayoutId } from '@/front-components/hooks/useResolveStandalonePageLayoutId';
 import { getMediaFileExtension } from '@/front-components/media-session/utils/getMediaFileExtension';
+import { frontComponentsSelector } from '@/front-components/states/frontComponentsSelector';
+import { resolveIdFromIdOrUniversalIdentifier } from '@/front-components/utils/resolveIdFromIdOrUniversalIdentifier';
+import { fieldMetadataItemsSelector } from '@/metadata-store/states/fieldMetadataItemsSelector';
 import { setRecordPageActiveTabId } from '@/page-layout/utils/setRecordPageActiveTabId';
 import { useNavigateSidePanel } from '@/side-panel/hooks/useNavigateSidePanel';
 import { useOpenComposeEmailInSidePanel } from '@/side-panel/hooks/useOpenComposeEmailInSidePanel';
@@ -174,6 +178,7 @@ export const useFrontComponentExecutionContext = ({
   const { closeSidePanelMenu } = useSidePanelMenu();
   const { copyToClipboardWithoutSuccessToast } = useCopyToClipboard();
   const { uploadFile: uploadFileToFilesField } = useDirectFileUpload();
+  const { resolveStandalonePageLayoutId } = useResolveStandalonePageLayoutId();
   const { i18n } = useLingui();
   // oxlint-disable-next-line twenty/no-state-useref
   const lastCopyToClipboardCallAtRef = useRef<number>(Number.NEGATIVE_INFINITY);
@@ -209,9 +214,23 @@ export const useFrontComponentExecutionContext = ({
       }
     }
 
+    const pageLayoutIdOrUniversalIdentifier = (
+      params as { pageLayoutId?: string } | undefined
+    )?.pageLayoutId;
+
+    const navigateParams =
+      to === AppPath.PageLayoutPage &&
+      isNonEmptyString(pageLayoutIdOrUniversalIdentifier)
+        ? {
+            pageLayoutId: await resolveStandalonePageLayoutId(
+              pageLayoutIdOrUniversalIdentifier,
+            ),
+          }
+        : params;
+
     navigateApp(
       to as AppPath,
-      params as Parameters<typeof navigateApp>[1],
+      navigateParams as Parameters<typeof navigateApp>[1],
       queryParams,
       options,
     );
@@ -361,7 +380,10 @@ export const useFrontComponentExecutionContext = ({
           : undefined;
 
         openFrontComponentInSidePanel({
-          frontComponentId: params.frontComponentId,
+          frontComponentId: resolveIdFromIdOrUniversalIdentifier({
+            idOrUniversalIdentifier: params.frontComponentId,
+            items: store.get(frontComponentsSelector.atom),
+          }),
           pageTitle: params.pageTitle,
           pageIcon: getIcon(params.pageIcon),
           resetNavigationStack: params.resetNavigationStack,
@@ -511,9 +533,14 @@ export const useFrontComponentExecutionContext = ({
         return { status: 'failed', reason: 'invalid-params' };
       }
 
+      const fieldMetadataId = resolveIdFromIdOrUniversalIdentifier({
+        idOrUniversalIdentifier: params.fieldMetadataId,
+        items: store.get(fieldMetadataItemsSelector.atom),
+      });
+
       // A non-FILES target would fail at attach time, stranding the uploaded file.
       const { fieldMetadataItem } = getFieldMetadataItemById({
-        fieldMetadataId: params.fieldMetadataId,
+        fieldMetadataId,
         objectMetadataItems,
       });
 
@@ -531,7 +558,7 @@ export const useFrontComponentExecutionContext = ({
           new File([file], fileName, { type: file.type }),
           {
             fileFolder: FileFolder.FilesField,
-            fieldMetadataId: params.fieldMetadataId,
+            fieldMetadataId,
           },
         );
 

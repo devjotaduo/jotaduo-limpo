@@ -8,6 +8,7 @@ import { AppPath, SidePanelPages } from 'twenty-shared/types';
 import { MAIN_CONTEXT_STORE_INSTANCE_ID } from '@/context-store/constants/MainContextStoreInstanceId';
 import { contextStoreRecordShowParentViewComponentState } from '@/context-store/states/contextStoreRecordShowParentViewComponentState';
 import { useFrontComponentExecutionContext } from '@/front-components/hooks/useFrontComponentExecutionContext';
+import { metadataStoreState } from '@/metadata-store/states/metadataStoreState';
 import { getMockObjectMetadataItemOrThrow } from '~/testing/utils/getMockObjectMetadataItemOrThrow';
 import { getTestEnrichedObjectMetadataItemsMock } from '~/testing/utils/getTestEnrichedObjectMetadataItemsMock';
 import { setTestObjectMetadataItemsInMetadataStore } from '~/testing/utils/setTestObjectMetadataItemsInMetadataStore';
@@ -167,6 +168,17 @@ jest.mock('~/hooks/useCopyToClipboard', () => ({
 jest.mock('@/file/hooks/useDirectFileUpload', () => ({
   useDirectFileUpload: () => ({
     uploadFile: mockDirectUploadFile,
+  }),
+}));
+
+const mockResolveStandalonePageLayoutId = jest.fn(
+  async (pageLayoutIdOrUniversalIdentifier: string) =>
+    pageLayoutIdOrUniversalIdentifier,
+);
+
+jest.mock('@/front-components/hooks/useResolveStandalonePageLayoutId', () => ({
+  useResolveStandalonePageLayoutId: () => ({
+    resolveStandalonePageLayoutId: mockResolveStandalonePageLayoutId,
   }),
 }));
 
@@ -492,6 +504,31 @@ describe('useFrontComponentExecutionContext', () => {
       });
 
       expect(store.get(parentViewAtom)).toEqual(parentView);
+    });
+
+    it('should resolve a page layout universalIdentifier before opening a standalone page', async () => {
+      mockResolveStandalonePageLayoutId.mockResolvedValueOnce('page-layout-id');
+
+      const { result } = renderUseFrontComponentExecutionContext({
+        frontComponentId: FRONT_COMPONENT_ID,
+      });
+
+      await act(async () => {
+        await result.current.frontComponentHostCommunicationApi.navigate(
+          AppPath.PageLayoutPage,
+          { pageLayoutId: 'page-layout-universal-identifier' },
+        );
+      });
+
+      expect(mockResolveStandalonePageLayoutId).toHaveBeenCalledWith(
+        'page-layout-universal-identifier',
+      );
+      expect(mockNavigateApp).toHaveBeenCalledWith(
+        AppPath.PageLayoutPage,
+        { pageLayoutId: 'page-layout-id' },
+        undefined,
+        undefined,
+      );
     });
   });
 
@@ -884,6 +921,39 @@ describe('useFrontComponentExecutionContext', () => {
         resetNavigationStack: undefined,
         recordContext: { objectNameSingular: 'lead', recordId: undefined },
       });
+    });
+
+    it('should accept the front component universalIdentifier in place of its id', async () => {
+      const store = getDefaultStore();
+      const frontComponentsAtom =
+        metadataStoreState.atomFamily('frontComponents');
+      const previousFrontComponents = store.get(frontComponentsAtom);
+
+      store.set(frontComponentsAtom, {
+        current: [{ id: 'fc-1', universalIdentifier: 'fc-universal-id' }],
+        draft: [],
+        status: 'up-to-date',
+      });
+
+      const { result } = renderUseFrontComponentExecutionContext({
+        frontComponentId: FRONT_COMPONENT_ID,
+      });
+
+      await act(async () => {
+        await result.current.frontComponentHostCommunicationApi.openSidePanelPage(
+          {
+            page: SidePanelPages.ViewFrontComponent,
+            frontComponentId: 'fc-universal-id',
+            pageTitle: 'My Component',
+          },
+        );
+      });
+
+      expect(mockOpenFrontComponentInSidePanel).toHaveBeenCalledWith(
+        expect.objectContaining({ frontComponentId: 'fc-1' }),
+      );
+
+      store.set(frontComponentsAtom, previousFrontComponents);
     });
   });
 
@@ -1288,6 +1358,45 @@ describe('useFrontComponentExecutionContext', () => {
         status: 'failed',
         reason: 'upload-failed',
       });
+    });
+
+    it('should accept the field universalIdentifier in place of its id', async () => {
+      const store = getDefaultStore();
+      const fieldMetadataItemsAtom =
+        metadataStoreState.atomFamily('fieldMetadataItems');
+      const previousFieldMetadataItems = store.get(fieldMetadataItemsAtom);
+
+      store.set(fieldMetadataItemsAtom, {
+        ...previousFieldMetadataItems,
+        current: [
+          ...previousFieldMetadataItems.current,
+          { id: 'files-field-id', universalIdentifier: 'files-field-uid' },
+        ],
+      });
+      mockDirectUploadFile.mockResolvedValue({
+        id: 'file-4',
+        path: 'files-field/file-4.webm',
+        url: 'https://example.com/files/file-4.webm',
+        size: 14,
+      });
+
+      const { result } = renderUseFrontComponentExecutionContext({
+        frontComponentId: FRONT_COMPONENT_ID,
+      });
+
+      const uploadResult =
+        await result.current.frontComponentHostCommunicationApi.uploadFile(
+          buildRecordedBlob(),
+          { fieldMetadataId: 'files-field-uid' },
+        );
+
+      expect(uploadResult).toMatchObject({ status: 'uploaded' });
+      expect(mockDirectUploadFile).toHaveBeenCalledWith(
+        expect.any(File),
+        expect.objectContaining({ fieldMetadataId: 'files-field-id' }),
+      );
+
+      store.set(fieldMetadataItemsAtom, previousFieldMetadataItems);
     });
   });
 

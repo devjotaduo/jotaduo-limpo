@@ -4,7 +4,7 @@ import {
 } from 'twenty-sdk/front-component';
 
 export type PickAndUploadFileParams = {
-  // Must be a FILES field, for the same reason as uploadFile
+  // Id or universalIdentifier of a FILES field, for the same reason as uploadFile
   fieldMetadataId: string;
   accept?: string;
 };

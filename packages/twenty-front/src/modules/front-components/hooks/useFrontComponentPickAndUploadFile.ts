@@ -1,7 +1,10 @@
 import { pickFileFromComputer } from '@/front-components/utils/pickFileFromComputer';
+import { resolveIdFromIdOrUniversalIdentifier } from '@/front-components/utils/resolveIdFromIdOrUniversalIdentifier';
+import { fieldMetadataItemsSelector } from '@/metadata-store/states/fieldMetadataItemsSelector';
 import { useObjectMetadataItems } from '@/object-metadata/hooks/useObjectMetadataItems';
 import { getFieldMetadataItemById } from '@/object-metadata/utils/getFieldMetadataItemById';
 import { isNonEmptyString, isString } from '@sniptt/guards';
+import { useStore } from 'jotai';
 import { useRef } from 'react';
 import { type FrontComponentHostCommunicationApi } from 'twenty-front-component-renderer';
 import { FieldMetadataType } from 'twenty-shared/types';
@@ -13,6 +16,7 @@ export const useFrontComponentPickAndUploadFile = ({
   uploadFile: FrontComponentHostCommunicationApi['uploadFile'];
 }) => {
   const { objectMetadataItems } = useObjectMetadataItems();
+  const store = useStore();
   // oxlint-disable-next-line twenty/no-state-useref
   const isFilePickerOpenRef = useRef(false);
 
@@ -27,8 +31,13 @@ export const useFrontComponentPickAndUploadFile = ({
         return { status: 'failed', reason: 'invalid-params' };
       }
 
+      const fieldMetadataId = resolveIdFromIdOrUniversalIdentifier({
+        idOrUniversalIdentifier: params.fieldMetadataId,
+        items: store.get(fieldMetadataItemsSelector.atom),
+      });
+
       const { fieldMetadataItem } = getFieldMetadataItemById({
-        fieldMetadataId: params.fieldMetadataId,
+        fieldMetadataId,
         objectMetadataItems,
       });
 
@@ -58,7 +67,7 @@ export const useFrontComponentPickAndUploadFile = ({
       }
 
       const uploadResult = await uploadFile(file, {
-        fieldMetadataId: params.fieldMetadataId,
+        fieldMetadataId,
         fileName: file.name,
       });
 
