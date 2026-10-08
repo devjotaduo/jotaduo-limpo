@@ -34,9 +34,12 @@ TWENTY_VERSION="$(sed -n "s/.*TWENTY_CURRENT_VERSION = '\([^']*\)'.*/\1/p" "$VER
 [ -n "$TWENTY_VERSION" ] || { echo "Não achei TWENTY_CURRENT_VERSION" >&2; exit 1; }
 TAG="${TWENTY_REF:0:8}-$SHORT"
 
-sudo -n docker buildx inspect "$BUILDER" >/dev/null 2>&1 || \
-  sudo -n docker buildx create --name "$BUILDER" --driver docker-container \
-    --driver-opt memory=12g --driver-opt cpu-quota=400000 --driver-opt cpu-period=100000
+# Sem cota de CPU: o lingui extract abre um worker por CPU da máquina, e com 4 CPUs para 7
+# workers eles não sobem em 10 s. O mesmo nome da checagem reaproveita o volume do cache;
+# quem cria o builder define os limites, e a checagem volta a criá-lo com a cota dela.
+sudo -n docker buildx rm --keep-state "$BUILDER" >/dev/null 2>&1 || true
+sudo -n docker buildx create --name "$BUILDER" --driver docker-container \
+  --driver-opt memory=12g
 
 echo "Gerando $IMAGE:$TAG (Twenty v$TWENTY_VERSION, base $TWENTY_REF, commit $COMMIT)"
 build() {
@@ -44,8 +47,8 @@ build() {
     --platform linux/amd64 --build-arg APP_VERSION="v$TWENTY_VERSION" \
     -f "$CONTEXT/packages/twenty-docker/twenty/Dockerfile" "$@" "$CONTEXT"
 }
-# o servidor e o front em paralelo, na cota de 4 CPUs, deixam o lingui extract sem
-# resposta dos workers; um de cada vez, e a imagem final só junta o que ficou em cache
+# um de cada vez, para o servidor e o front não disputarem as CPUs com os workers do
+# lingui; a imagem final só junta o que ficou em cache
 status=0
 build --target twenty-server-build &&
   build --target twenty-front-build &&
