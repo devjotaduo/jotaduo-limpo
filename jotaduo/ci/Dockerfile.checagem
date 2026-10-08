@@ -1,0 +1,53 @@
+# Checagem do Twenty do JotaDuo: typecheck e testes das áreas que o JotaDuo muda.
+# Roda no BuildKit, com a raiz do repositório como contexto; não gera imagem.
+# O build da imagem não confere tipos (o nest build usa SWC com typeCheck: false),
+# por isso esta checagem existe. O log completo do typecheck aparece mesmo se o Nx
+# falhar antes do compilador.
+
+FROM node:24.19.0-alpine3.23@sha256:244cc2b53f46f9e876304391d17682b0ddae9ac33491f4857e25e35a36ba7995 AS deps
+WORKDIR /app
+COPY ./package.json ./yarn.lock ./.yarnrc.yml ./tsconfig.base.json ./nx.json /app/
+COPY ./.yarn/releases /app/.yarn/releases
+COPY ./.yarn/patches /app/.yarn/patches
+COPY ./packages/twenty-emails/package.json /app/packages/twenty-emails/
+COPY ./packages/twenty-server/package.json /app/packages/twenty-server/
+COPY ./packages/twenty-server/patches /app/packages/twenty-server/patches
+COPY ./packages/twenty-shared/package.json /app/packages/twenty-shared/
+COPY ./packages/twenty-client-sdk/package.json /app/packages/twenty-client-sdk/
+COPY ./packages/twenty-oxlint-rules/package.json /app/packages/twenty-oxlint-rules/
+COPY ./packages/twenty-ui/package.json /app/packages/twenty-ui/
+COPY ./packages/twenty-front/package.json /app/packages/twenty-front/
+COPY ./packages/twenty-front-component-renderer/package.json /app/packages/twenty-front-component-renderer/
+COPY ./packages/twenty-sdk/package.json /app/packages/twenty-sdk/
+RUN yarn workspaces focus twenty-monorepo twenty-server twenty-emails twenty-shared twenty-client-sdk twenty-oxlint-rules twenty-front twenty-front-component-renderer twenty-ui twenty-sdk && yarn cache clean && npx nx reset
+
+FROM deps AS sources
+COPY ./packages/twenty-emails /app/packages/twenty-emails
+COPY ./packages/twenty-shared /app/packages/twenty-shared
+COPY ./packages/twenty-client-sdk /app/packages/twenty-client-sdk
+COPY ./packages/twenty-oxlint-rules /app/packages/twenty-oxlint-rules
+COPY ./packages/twenty-ui /app/packages/twenty-ui
+COPY ./packages/twenty-sdk /app/packages/twenty-sdk
+COPY ./packages/twenty-front-component-renderer /app/packages/twenty-front-component-renderer
+COPY ./packages/twenty-front /app/packages/twenty-front
+COPY ./packages/twenty-server /app/packages/twenty-server
+
+# servidor e SDK: o runAgent muda o tipo compartilhado que o SDK publica
+FROM sources AS server-check
+RUN typecheck_status=0; npx nx typecheck twenty-server --skip-nx-cache > /tmp/tc.log 2>&1 || typecheck_status=$?; \
+    cat /tmp/tc.log; echo "server erros TS: $(grep -c 'error TS' /tmp/tc.log || true)"; exit "$typecheck_status"
+RUN typecheck_status=0; npx nx typecheck twenty-sdk --skip-nx-cache > /tmp/tc-sdk.log 2>&1 || typecheck_status=$?; \
+    cat /tmp/tc-sdk.log; echo "sdk erros TS: $(grep -c 'error TS' /tmp/tc-sdk.log || true)"; exit "$typecheck_status"
+ARG SERVER_TESTS=""
+RUN set -o pipefail && cd packages/twenty-server && npx jest --config jest.config.mjs $SERVER_TESTS 2>&1 | tail -60
+
+FROM sources AS front-check
+ARG FRONT_TESTS=""
+ARG RENDERER_TESTS=""
+RUN typecheck_status=0; npx nx typecheck twenty-front-component-renderer --skip-nx-cache > /tmp/tc-renderer.log 2>&1 || typecheck_status=$?; \
+    cat /tmp/tc-renderer.log; echo "renderer erros TS: $(grep -c 'error TS' /tmp/tc-renderer.log || true)"; exit "$typecheck_status"
+RUN typecheck_status=0; NODE_OPTIONS="--max-old-space-size=8192" npx nx typecheck twenty-front --skip-nx-cache > /tmp/tc-front.log 2>&1 || typecheck_status=$?; \
+    cat /tmp/tc-front.log; echo "front erros TS: $(grep -c 'error TS' /tmp/tc-front.log || true)"; exit "$typecheck_status"
+COPY ./jest.preset.js /app/
+RUN set -o pipefail && cd packages/twenty-front && npx jest --config jest.config.mjs $FRONT_TESTS 2>&1 | tail -40
+RUN set -o pipefail && if [ -n "$RENDERER_TESTS" ]; then cd packages/twenty-front-component-renderer && npx jest $RENDERER_TESTS 2>&1 | tail -40; fi

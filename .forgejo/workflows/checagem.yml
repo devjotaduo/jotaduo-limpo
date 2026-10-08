@@ -1,0 +1,38 @@
+name: Checagem do Twenty do JotaDuo
+# Roda no runner do oracle-sp com forgejo-runner exec, disparado por jotaduo/ci/oracle-sp.sh.
+on: [push]
+jobs:
+  checagem:
+    runs-on: docker
+    defaults:
+      run:
+        working-directory: /workspace
+    steps:
+      - name: Prepare as ferramentas
+        run: apk add --no-cache bash git
+      - name: Crie o builder isolado
+        run: |
+          docker buildx inspect jotaduo-checagem >/dev/null 2>&1 || \
+            docker buildx create --name jotaduo-checagem --driver docker-container \
+              --driver-opt memory=12g --driver-opt cpu-quota=400000 --driver-opt cpu-period=100000
+          docker buildx inspect jotaduo-checagem --bootstrap
+      - name: Confira tipos e testes
+        run: bash jotaduo/ci/checar.sh
+        env:
+          BUILDER: jotaduo-checagem
+          LOG_DIR: /tmp/relatorios
+      - name: Mostre os logs completos
+        if: always()
+        # a saída do job é o que chega ao servidor, com o Docker do host ou o do dind
+        run: |
+          for arquivo in /tmp/relatorios/*.log; do
+            [ -f "$arquivo" ] || continue
+            echo "===== $arquivo"
+            cat "$arquivo"
+          done
+      - name: Libere o builder e guarde o cache
+        if: always()
+        run: |
+          if docker buildx inspect jotaduo-checagem >/dev/null 2>&1; then
+            docker buildx rm --keep-state jotaduo-checagem
+          fi
