@@ -7,6 +7,7 @@ import { Button } from 'twenty-ui/primitives/input';
 import { themeCssVariables } from 'twenty-ui/theme';
 
 import { serializePlainTextAsAdvancedTextEditorDocument } from '@/advanced-text-editor/utils/serializePlainTextAsAdvancedTextEditorDocument';
+import { AiChatAvatar } from '@/ai/components/AiChatAvatar';
 import { getAiChatSuggestedPrompts } from '@/ai/components/suggested-prompts/getAiChatSuggestedPrompts';
 import { useAiChatSuggestedPromptsContext } from '@/ai/hooks/useAiChatSuggestedPromptsContext';
 import { useStageAiChatPreprompt } from '@/ai/hooks/useStageAiChatPreprompt';
@@ -23,6 +24,13 @@ const StyledContainer = styled.div<{ isCentered: boolean }>`
     isCentered ? themeCssVariables.spacing[4] : themeCssVariables.spacing[2]};
   padding: ${({ isCentered }) =>
     isCentered ? themeCssVariables.spacing[4] : themeCssVariables.spacing[2]};
+`;
+
+const StyledAvatarContainer = styled.div<{ isCentered: boolean }>`
+  display: flex;
+  justify-content: ${({ isCentered }) => (isCentered ? 'center' : 'flex-start')};
+  padding: 0
+    ${({ isCentered }) => (isCentered ? '0' : themeCssVariables.spacing[2])};
 `;
 
 const StyledTitle = styled.div<{ isCentered: boolean }>`
@@ -82,6 +90,9 @@ export const AiChatSuggestedPrompts = ({
 
   return (
     <StyledContainer isCentered={isCentered}>
+      <StyledAvatarContainer isCentered={isCentered}>
+        <AiChatAvatar size={isCentered ? 40 : 24} />
+      </StyledAvatarContainer>
       <StyledTitle isCentered={isCentered}>
         {t`What can I help you with?`}
       </StyledTitle>
