@@ -36,6 +36,7 @@ import { MAIN_CONTEXT_STORE_INSTANCE_ID } from '@/context-store/constants/MainCo
 import { contextStoreRecordShowParentViewComponentState } from '@/context-store/states/contextStoreRecordShowParentViewComponentState';
 import { useDirectFileUpload } from '@/file/hooks/useDirectFileUpload';
 import { useFrontComponentApplicationTokenPair } from '@/front-components/hooks/useFrontComponentApplicationTokenPair';
+import { useFrontComponentPickAndUploadFile } from '@/front-components/hooks/useFrontComponentPickAndUploadFile';
 import { getMediaFileExtension } from '@/front-components/media-session/utils/getMediaFileExtension';
 import { setRecordPageActiveTabId } from '@/page-layout/utils/setRecordPageActiveTabId';
 import { useNavigateSidePanel } from '@/side-panel/hooks/useNavigateSidePanel';
@@ -549,6 +550,10 @@ export const useFrontComponentExecutionContext = ({
       }
     };
 
+  const { pickAndUploadFile } = useFrontComponentPickAndUploadFile({
+    uploadFile: hostUploadFile,
+  });
+
   const currentUserId = currentUser?.id;
 
   const storageNamespace = isDefined(currentUserId)
@@ -614,6 +619,7 @@ export const useFrontComponentExecutionContext = ({
       updateProgress,
       copyToClipboard,
       uploadFile: hostUploadFile,
+      pickAndUploadFile,
       storageSet,
       storageDelete,
       storageClear,

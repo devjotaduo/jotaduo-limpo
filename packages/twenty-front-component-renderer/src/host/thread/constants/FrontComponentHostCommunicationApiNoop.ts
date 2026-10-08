@@ -12,6 +12,10 @@ export const FRONT_COMPONENT_HOST_COMMUNICATION_API_NOOP: FrontComponentHostComm
     updateProgress: async () => {},
     copyToClipboard: async () => {},
     uploadFile: async () => ({ status: 'failed', reason: 'upload-failed' }),
+    pickAndUploadFile: async () => ({
+      status: 'failed',
+      reason: 'picker-unavailable',
+    }),
     storageSet: async () => {},
     storageDelete: async () => {},
     storageClear: async () => {},

@@ -14,6 +14,8 @@ import {
   type UploadFileFunction,
 } from 'twenty-sdk/front-component';
 
+import { type PickAndUploadFileFunction } from '@/types/PickAndUploadFileFunction';
+
 export type FrontComponentHostCommunicationApi = {
   navigate: NavigateFunction;
   requestAccessTokenRefresh: RequestAccessTokenRefreshFunction;
@@ -25,6 +27,7 @@ export type FrontComponentHostCommunicationApi = {
   updateProgress: UpdateProgressFunction;
   copyToClipboard: CopyToClipboardFunction;
   uploadFile: UploadFileFunction;
+  pickAndUploadFile: PickAndUploadFileFunction;
   storageSet: StorageSetFunction;
   storageDelete: StorageDeleteFunction;
   storageClear: StorageClearFunction;

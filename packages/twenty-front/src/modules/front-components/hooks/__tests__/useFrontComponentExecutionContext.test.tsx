@@ -189,6 +189,13 @@ jest.mock('@/page-layout/utils/setRecordPageActiveTabId', () => ({
     mockSetRecordPageActiveTabId(params),
 }));
 
+const mockPickFileFromComputer = jest.fn();
+
+jest.mock('@/front-components/utils/pickFileFromComputer', () => ({
+  pickFileFromComputer: (...args: unknown[]) =>
+    mockPickFileFromComputer(...args),
+}));
+
 const renderUseFrontComponentExecutionContext = (
   params: Omit<
     Parameters<typeof useFrontComponentExecutionContext>[0],
@@ -1093,6 +1100,45 @@ describe('useFrontComponentExecutionContext', () => {
       });
 
       expect(mockSetCommandMenuItemProgress).toHaveBeenCalledWith(100);
+    });
+  });
+
+  describe('pickAndUploadFile', () => {
+    it('should upload the picked file through the host upload', async () => {
+      mockDirectUploadFile.mockReset();
+      mockDirectUploadFile.mockResolvedValue({
+        id: 'file-3',
+        path: 'files-field/file-3.pdf',
+        url: 'https://example.com/files/file-3.pdf',
+        size: 7,
+      });
+      mockPickFileFromComputer.mockResolvedValue(
+        new File(['content'], 'contract.pdf', { type: 'application/pdf' }),
+      );
+
+      const { result } = renderUseFrontComponentExecutionContext({
+        frontComponentId: FRONT_COMPONENT_ID,
+      });
+
+      const pickResult =
+        await result.current.frontComponentHostCommunicationApi.pickAndUploadFile(
+          { fieldMetadataId: 'files-field-id' },
+        );
+
+      expect(pickResult).toEqual({
+        status: 'uploaded',
+        file: {
+          fileId: 'file-3',
+          path: 'files-field/file-3.pdf',
+          url: 'https://example.com/files/file-3.pdf',
+          size: 7,
+          mimeType: 'application/pdf',
+          label: 'contract.pdf',
+        },
+      });
+
+      const [uploadedFile] = mockDirectUploadFile.mock.calls[0];
+      expect(uploadedFile.name).toBe('contract.pdf');
     });
   });
 
