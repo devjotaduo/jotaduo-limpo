@@ -14,5 +14,6 @@ export type AgentRunSpec = {
     canAskHumans: boolean;
   };
   additionalExcludedToolNames?: string[];
+  maxSteps?: number;
   toolLoadingStrategy?: AgentToolLoadingStrategy;
 };

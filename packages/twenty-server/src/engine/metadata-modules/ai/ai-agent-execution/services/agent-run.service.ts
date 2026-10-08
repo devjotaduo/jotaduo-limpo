@@ -36,6 +36,7 @@ import { buildAgentRolePermissionConfig } from 'src/engine/metadata-modules/ai/a
 import { buildAgentRunThreadId } from 'src/engine/metadata-modules/ai/ai-agent-execution/utils/build-agent-run-thread-id.util';
 import { mapAgentRunSummaryToRunAgentResult } from 'src/engine/metadata-modules/ai/ai-agent-execution/utils/map-agent-run-summary-to-run-agent-result.util';
 import { resolveRunAgentErrorCode } from 'src/engine/metadata-modules/ai/ai-agent-execution/utils/resolve-run-agent-error-code.util';
+import { resolveRunAgentMaxStepsOrThrow } from 'src/engine/metadata-modules/ai/ai-agent-execution/utils/resolve-run-agent-max-steps-or-throw.util';
 import { resolveRunAgentMessagesOrThrow } from 'src/engine/metadata-modules/ai/ai-agent-execution/utils/resolve-run-agent-messages-or-throw.util';
 import { AGENT_RUN_BASE_SYSTEM_PROMPT } from 'src/engine/metadata-modules/ai/ai-agent/constants/agent-run-base-system-prompt.const';
 import { AgentEntity } from 'src/engine/metadata-modules/ai/ai-agent/entities/agent.entity';
@@ -55,6 +56,7 @@ type RunAgentServiceInput = {
   thread?: RunAgentThread | null;
   runAsWorkspaceMemberId?: string;
   persist?: boolean | null;
+  maxSteps?: number | null;
 };
 
 type AgentApiRunCaller = Extract<AgentRunCaller, { type: 'AGENT_API_RUN' }>;
@@ -105,6 +107,8 @@ export class AgentRunService
         AiExceptionCode.INVALID_AGENT_INPUT,
       );
     }
+
+    const maxSteps = resolveRunAgentMaxStepsOrThrow(input.maxSteps);
 
     const thread = input.thread ?? null;
 
@@ -209,6 +213,7 @@ export class AgentRunService
         spec: {
           agentId: agent.id,
           title: isNonEmptyString(thread?.title) ? thread.title : agent.label,
+          maxSteps,
           baseSystemPrompt: AGENT_RUN_BASE_SYSTEM_PROMPT,
           // kept with the run rather than in its messages, so a run that waits still has them when it goes on
           instructions: input.additionalInstructions ?? null,

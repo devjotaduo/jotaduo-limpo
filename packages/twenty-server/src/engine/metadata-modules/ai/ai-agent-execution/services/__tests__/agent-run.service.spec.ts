@@ -7,6 +7,7 @@ import {
 import { AgentRunService } from 'src/engine/metadata-modules/ai/ai-agent-execution/services/agent-run.service';
 import { type AgentRunSummary } from 'twenty-shared/ai';
 import { buildAgentRunThreadId } from 'src/engine/metadata-modules/ai/ai-agent-execution/utils/build-agent-run-thread-id.util';
+import { AGENT_CONFIG } from 'src/engine/metadata-modules/ai/ai-agent/constants/agent-config.const';
 import {
   AiException,
   AiExceptionCode,
@@ -172,6 +173,47 @@ describe('AgentRunService', () => {
       conversationActor: { type: 'application', applicationId: APPLICATION.id },
       turnCreatedBy: { source: 'APPLICATION' },
     });
+  });
+
+  it('hands the run the step limit of its caller', async () => {
+    const { service, agentRunnerService } = buildService();
+
+    await run(service, { input: userInput('Hello'), maxSteps: 4 });
+
+    expect(runInput(agentRunnerService).spec.maxSteps).toBe(4);
+  });
+
+  it('caps the step limit at the one of the server', async () => {
+    const { service, agentRunnerService } = buildService();
+
+    await run(service, {
+      input: userInput('Hello'),
+      maxSteps: AGENT_CONFIG.MAX_STEPS + 1,
+    });
+
+    expect(runInput(agentRunnerService).spec.maxSteps).toBe(
+      AGENT_CONFIG.MAX_STEPS,
+    );
+  });
+
+  it.each([[null], [undefined]])(
+    'keeps the step limit of the server when maxSteps is %s',
+    async (maxSteps) => {
+      const { service, agentRunnerService } = buildService();
+
+      await run(service, { input: userInput('Hello'), maxSteps });
+
+      expect(runInput(agentRunnerService).spec.maxSteps).toBeUndefined();
+    },
+  );
+
+  it.each([[0], [-1]])('refuses a step limit of %s', async (maxSteps) => {
+    const { service, agentRunnerService } = buildService();
+
+    await expect(
+      run(service, { input: userInput('Hello'), maxSteps }),
+    ).rejects.toMatchObject({ code: AiExceptionCode.INVALID_AGENT_INPUT });
+    expect(agentRunnerService.run).not.toHaveBeenCalled();
   });
 
   it('keeps the replies a run without a thread hands over as its input', async () => {

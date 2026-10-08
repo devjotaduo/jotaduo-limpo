@@ -337,8 +337,12 @@ export class AgentAsyncExecutorService {
     priorMessages = [],
     pausingTools = {},
     canAskHumans = false,
+    maxSteps = AGENT_CONFIG.MAX_STEPS,
   }: {
     agent: AgentEntity | null;
+    // a caller's own limit, no higher than AGENT_CONFIG.MAX_STEPS; counted per call, so a continued
+    // conversation or a resumed pause starts again from zero
+    maxSteps?: number;
     messages: RunAgentMessage[];
     // a continued conversation, with the tool calls and results plain run messages cannot carry
     priorMessages?: ExtendedUIMessage[];
@@ -531,7 +535,7 @@ export class AgentAsyncExecutorService {
         model: registeredModel.model,
         messages: conversationModelMessages,
         stopWhen: (step) =>
-          isStepCount(AGENT_CONFIG.MAX_STEPS)(step) ||
+          isStepCount(maxSteps)(step) ||
           endsOnPausingToolCall({ steps: step.steps, offeredToolNames }) ||
           hasNoMoreAvailableCredits,
         providerOptions,

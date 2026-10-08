@@ -480,6 +480,16 @@ describe('AgentRunnerService', () => {
     });
   });
 
+  it('keeps the step limit in its run spec', async () => {
+    const { service, agentAsyncExecutorService } = buildService();
+
+    await service.run({ ...RUN_INPUT, spec: { ...RUN_INPUT.spec, maxSteps: 4 } });
+
+    expect(agentAsyncExecutorService.executeAgent).toHaveBeenCalledWith(
+      expect.objectContaining({ maxSteps: 4 }),
+    );
+  });
+
   it('records nothing of a turn it does not record that throws', async () => {
     const { service, agentAsyncExecutorService, agentRunConversationService } =
       buildService();

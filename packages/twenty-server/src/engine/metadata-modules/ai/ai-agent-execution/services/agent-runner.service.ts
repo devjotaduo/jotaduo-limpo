@@ -240,6 +240,7 @@ export class AgentRunnerService {
       execution = await withDedicatedAiTrace(() =>
         this.agentAsyncExecutorService.executeAgent({
           agent,
+          maxSteps: spec.maxSteps,
           messages: prompt?.messages ?? [],
           priorMessages,
           // every run here goes on in the background, unlike a chat, so it can wait. The wait tools are

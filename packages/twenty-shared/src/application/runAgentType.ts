@@ -20,6 +20,8 @@ export type RunAgentInput = {
   runAsWorkspaceMemberId?: string;
   // false runs the agent without writing its conversation, for application tokens only; billing is unchanged
   persist?: boolean;
+  // stops the run after this many steps, capped at the server's own limit
+  maxSteps?: number;
 } & (
   | {
       input: string | RunAgentMessage[];
