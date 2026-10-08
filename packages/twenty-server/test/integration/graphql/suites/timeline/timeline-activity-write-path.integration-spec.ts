@@ -372,6 +372,10 @@ describe('timeline activity write path (integration)', () => {
             after: 'Timeline Write Path Renamed',
           },
         },
+        actor: expect.objectContaining({
+          source: expect.any(String),
+          name: expect.any(String),
+        }),
       });
     });
 
@@ -472,6 +476,10 @@ describe('timeline activity write path (integration)', () => {
           diff: {
             name: { before: `Batch ${index}`, after: 'Batch renamed twice' },
           },
+          actor: expect.objectContaining({
+            source: expect.any(String),
+            name: expect.any(String),
+          }),
         });
       }
     });
@@ -548,6 +556,10 @@ describe('timeline activity write path (integration)', () => {
         diff: {
           name: { before: 'Rollup Host', after: 'Rollup Host Renamed' },
         },
+        actor: expect.objectContaining({
+          source: expect.any(String),
+          name: expect.any(String),
+        }),
       });
     });
   });

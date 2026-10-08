@@ -3,7 +3,7 @@ import { Injectable } from '@nestjs/common';
 import chunk from 'lodash.chunk';
 import { QUERY_MAX_RECORDS } from 'twenty-shared/constants';
 import { type ObjectRecord } from 'twenty-shared/types';
-import { isDefined } from 'twenty-shared/utils';
+import { fastDeepEqual, isDefined } from 'twenty-shared/utils';
 import { In, MoreThan, type ObjectLiteral } from 'typeorm';
 
 import { POSTGRESQL_ERROR_CODES } from 'src/engine/api/graphql/workspace-query-runner/constants/postgres-error-codes.constants';
@@ -23,7 +23,7 @@ import { buildTimelineActivityRelatedMorphFieldMetadataName } from 'src/modules/
 
 type TimelineActivityPayloadWorkspaceIdAndObjectSingularName = {
   payloads: (Omit<TimelineActivityPayload, 'properties'> & {
-    properties: Pick<TimelineActivityPayload['properties'], 'diff'>;
+    properties: Pick<TimelineActivityPayload['properties'], 'diff' | 'actor'>;
   })[];
   workspaceId: string;
   objectSingularName: string;
@@ -232,17 +232,28 @@ export class TimelineActivityRepository {
                 )
                 .find(
                   (timelineActivity) =>
-                    !isDefined(payload.linkedRecordId) ||
-                    timelineActivity.linkedRecordId === payload.linkedRecordId,
+                    (!isDefined(payload.linkedRecordId) ||
+                      timelineActivity.linkedRecordId ===
+                        payload.linkedRecordId) &&
+                    // Writes without a workspace member share a merge key, so the actor keeps one author per row
+                    fastDeepEqual(
+                      timelineActivity.properties?.actor,
+                      payload.properties.actor,
+                    ),
                 );
 
             if (isDefined(recentTimelineActivity)) {
               mergesToApply.push({
                 id: recentTimelineActivity.id,
-                properties: objectRecordDiffMerge(
-                  recentTimelineActivity.properties,
-                  payload.properties,
-                ),
+                properties: {
+                  ...objectRecordDiffMerge(
+                    recentTimelineActivity.properties,
+                    payload.properties,
+                  ),
+                  ...(isDefined(payload.properties.actor) && {
+                    actor: payload.properties.actor,
+                  }),
+                },
                 workspaceMemberId: payload.workspaceMemberId,
                 ...(!isDefined(
                   recentTimelineActivity.timelineActivityTypeSnapshot,
