@@ -16,6 +16,8 @@ import svgr from 'vite-plugin-svgr';
 
 import { createWywProfilingPlugin } from 'twenty-shared/vite';
 
+import { jotaduoBranding } from './branding/jotaduo/vite-plugin';
+
 import {
   API_PROXY_PATHS,
   buildApiProxyMatcher,
@@ -89,6 +91,7 @@ export default defineConfig(({ mode }) => {
     },
 
     plugins: [
+      jotaduoBranding({ enabled: env.JOTADUO_BRANDING_ENABLED !== 'false' }),
       react({
         plugins: [['@lingui/swc-plugin', {}]],
       }),
