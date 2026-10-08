@@ -39,12 +39,17 @@ sudo -n docker buildx inspect "$BUILDER" >/dev/null 2>&1 || \
     --driver-opt memory=12g --driver-opt cpu-quota=400000 --driver-opt cpu-period=100000
 
 echo "Gerando $IMAGE:$TAG (Twenty v$TWENTY_VERSION, base $TWENTY_REF, commit $COMMIT)"
+build() {
+  sudo -n docker buildx build --builder "$BUILDER" --progress=plain \
+    --platform linux/amd64 --build-arg APP_VERSION="v$TWENTY_VERSION" \
+    -f "$CONTEXT/packages/twenty-docker/twenty/Dockerfile" "$@" "$CONTEXT"
+}
+# o servidor e o front em paralelo, na cota de 4 CPUs, deixam o lingui extract sem
+# resposta dos workers; um de cada vez, e a imagem final só junta o que ficou em cache
 status=0
-sudo -n docker buildx build --builder "$BUILDER" --progress=plain \
-  --platform linux/amd64 --target twenty \
-  --build-arg APP_VERSION="v$TWENTY_VERSION" \
-  -f "$CONTEXT/packages/twenty-docker/twenty/Dockerfile" \
-  -t "$IMAGE:$TAG" --load "$CONTEXT" || status=$?
+build --target twenty-server-build &&
+  build --target twenty-front-build &&
+  build --target twenty -t "$IMAGE:$TAG" --load || status=$?
 
 # o volume do builder guarda o cache para o próximo build e a próxima checagem
 sudo -n docker buildx rm --keep-state "$BUILDER" >/dev/null 2>&1 || true
