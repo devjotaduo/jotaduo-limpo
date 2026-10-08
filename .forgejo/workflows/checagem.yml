@@ -4,6 +4,10 @@ on: [push]
 jobs:
   checagem:
     runs-on: docker
+    defaults:
+      run:
+        # o forgejo-runner exec copia para cá a pasta, que vai sem .git
+        working-directory: /workspace
     steps:
       - name: Prepare as ferramentas
         run: apk add --no-cache bash git
