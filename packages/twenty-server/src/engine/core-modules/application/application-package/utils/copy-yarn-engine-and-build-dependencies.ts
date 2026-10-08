@@ -4,6 +4,7 @@ import { join } from 'path';
 import { promisify } from 'util';
 
 import { YARN_ENGINE_DIRNAME } from 'src/engine/core-modules/application/application-package/constants/yarn-engine-dirname';
+import { buildLogicFunctionChildProcessEnv } from 'src/engine/core-modules/logic-function/logic-function-drivers/utils/build-logic-function-child-process-env';
 
 const execFilePromise = promisify(execFile);
 
@@ -20,8 +21,13 @@ export const copyYarnEngineAndBuildDependencies = async (
 
   const localYarnPath = join(buildDirectory, '.yarn/releases/yarn-4.9.2.cjs');
 
-  // Strip NODE_OPTIONS to prevent tsx loader from interfering with yarn
-  const { NODE_OPTIONS: _nodeOptions, ...cleanEnv } = process.env;
+  // enableScripts: false only skips dependency scripts: the app's own
+  // package.json postinstall still runs here. YARN_* carries registry and cache
+  // settings.
+  const yarnEnv = buildLogicFunctionChildProcessEnv({
+    parentEnv: process.env,
+    allowedParentEnvPrefixes: ['YARN_'],
+  });
 
   try {
     await execFilePromise(
@@ -29,7 +35,7 @@ export const copyYarnEngineAndBuildDependencies = async (
       [localYarnPath, 'workspaces', 'focus', '--all', '--production'],
       {
         cwd: buildDirectory,
-        env: cleanEnv,
+        env: yarnEnv,
       },
     );
     // oxlint-disable-next-line typescript/no-explicit-any

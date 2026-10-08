@@ -7,6 +7,7 @@ import { type LogicFunctionExecutionContext } from 'twenty-shared/logic-function
 import { type FlatApplication } from 'src/engine/core-modules/application/types/flat-application.type';
 import { getLocalDepsLayerPath } from 'src/engine/core-modules/logic-function/logic-function-drivers/drivers/local/utils/get-local-deps-layer-path.util';
 import { getLocalSdkLayerPath } from 'src/engine/core-modules/logic-function/logic-function-drivers/drivers/local/utils/get-local-sdk-layer-path.util';
+import { buildLogicFunctionChildProcessEnv } from 'src/engine/core-modules/logic-function/logic-function-drivers/utils/build-logic-function-child-process-env';
 import { HANDLER_NAME_REGEX } from 'src/engine/metadata-modules/logic-function/constants/handler.contant';
 
 export class LocalChildProcessRunnerService {
@@ -162,12 +163,11 @@ export class LocalChildProcessRunnerService {
       stdout: string;
       stderr: string;
     }>((resolve) => {
-      // Strip NODE_OPTIONS to prevent tsx loader from being inherited
-      const { NODE_OPTIONS: _n1, ...cleanProcessEnv } = process.env;
-      const { NODE_OPTIONS: _n2, ...cleanUserEnv } = env;
-
       const child = spawn(process.execPath, [runnerPath], {
-        env: { ...cleanProcessEnv, ...cleanUserEnv },
+        env: buildLogicFunctionChildProcessEnv({
+          parentEnv: process.env,
+          functionEnv: env,
+        }),
         stdio: ['pipe', 'pipe', 'pipe', 'ipc'],
       });
 
