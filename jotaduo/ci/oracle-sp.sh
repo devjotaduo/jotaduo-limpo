@@ -2,10 +2,10 @@
 # Dispara a checagem de um commit do fork no runner do Forgejo do oracle-sp.
 # Rode no servidor: bash oracle-sp.sh <commit> [branch]
 # Busca o branch num clone bare em ~/checagens/fork.git, extrai o commit sem .git numa
-# pasta própria do runner (o forgejo-runner exec só copia para /workspace uma pasta sem
-# repositório), roda .forgejo/workflows/checagem.yml e grava a saída em
-# ~/checagens/<commit curto>/runner.log. Não apaga nada: a pasta de um commit já extraído
-# é reaproveitada.
+# pasta própria do runner, montada só para leitura em /workspace do job (o forgejo-runner
+# exec não copia o código, e o Docker do runner é o do host), roda
+# .forgejo/workflows/checagem.yml e grava a saída em ~/checagens/<commit curto>/runner.log.
+# Não apaga nada: a pasta de um commit já extraído é reaproveitada.
 set -euo pipefail
 
 COMMIT="${1:?informe o commit}"
@@ -36,4 +36,4 @@ sudo -n docker exec "$RUNNER_CONTAINER" forgejo-runner exec \
   --directory "/data/$WORKDIR_NAME" \
   --workflows .forgejo/workflows/checagem.yml --job checagem \
   --image docker:29.8.2-cli --env-file /dev/null \
-  --container-opts "--cpus=1 --memory=1g" </dev/null 2>&1 | tee "$REPORT_DIR/runner.log"
+  --container-opts "--cpus=1 --memory=1g -v $RUNNER_DATA/$WORKDIR_NAME:/workspace:ro" </dev/null 2>&1 | tee "$REPORT_DIR/runner.log"

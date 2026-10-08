@@ -6,7 +6,7 @@ jobs:
     runs-on: docker
     defaults:
       run:
-        # o forgejo-runner exec copia para cá a pasta, que vai sem .git
+        # o oracle-sp.sh monta aqui o commit extraído, só para leitura
         working-directory: /workspace
     steps:
       - name: Prepare as ferramentas
