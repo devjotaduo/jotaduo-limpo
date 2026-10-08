@@ -352,6 +352,9 @@ export class ApplicationInstallService {
       workspaceId: params.workspaceId,
       applicationRegistrationId: appRegistration.id,
       sourceType: appRegistration.sourceType,
+      // Pre-installed apps reach every workspace without anyone opting in, so
+      // their installs follow new published versions the same way.
+      autoUpgrade: appRegistration.isPreInstalled,
     });
 
     await progressReporter.reportStepCompleted('CREATE_APPLICATION');
@@ -860,6 +863,7 @@ export class ApplicationInstallService {
     workspaceId,
     applicationRegistrationId,
     sourceType,
+    autoUpgrade,
   }: {
     existingApplication: ApplicationEntity | null;
     universalIdentifier: string;
@@ -869,6 +873,7 @@ export class ApplicationInstallService {
     workspaceId: string;
     applicationRegistrationId: string;
     sourceType: ApplicationRegistrationSourceType;
+    autoUpgrade: boolean;
   }): Promise<ApplicationEntity> {
     if (isDefined(existingApplication)) {
       return existingApplication;
@@ -883,6 +888,7 @@ export class ApplicationInstallService {
       sourceType,
       applicationRegistrationId,
       workspaceId,
+      autoUpgrade,
     });
   }
 }

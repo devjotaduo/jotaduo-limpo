@@ -3,14 +3,17 @@ import { InjectRepository } from '@nestjs/typeorm';
 import chalk from 'chalk';
 import { Command, CommandRunner, Option } from 'nest-commander';
 import { isDefined } from 'twenty-shared/utils';
-import { Repository } from 'typeorm';
+import { In, Repository } from 'typeorm';
 
 import { CommandLogger } from 'src/database/commands/logger';
 import { askCommandConfirmation } from 'src/database/commands/utils/ask-command-confirmation.util';
 import { parseBoundedPositiveInteger } from 'src/database/commands/utils/parse-bounded-positive-integer.util';
 import { ApplicationRegistrationEntity } from 'src/engine/core-modules/application/application-registration/application-registration.entity';
 import { ApplicationUpgradeService } from 'src/engine/core-modules/application/application-upgrade/application-upgrade.service';
+import { type ApplicationEntity } from 'src/engine/core-modules/application/application.entity';
 import { MessageQueue } from 'src/engine/core-modules/message-queue/message-queue.constants';
+import { formatUpgradeLog } from 'src/engine/core-modules/upgrade/utils/format-upgrade-log.util';
+import { WorkspaceEntity } from 'src/engine/core-modules/workspace/workspace.entity';
 
 type UpgradeApplicationCommandOptions = {
   applicationRegistrationUniversalIdentifier: string;
@@ -18,6 +21,7 @@ type UpgradeApplicationCommandOptions = {
   workspaceCountLimit?: number;
   dryRun?: boolean;
   yes?: boolean;
+  sync?: boolean;
 };
 
 const MAX_WORKSPACE_COUNT_LIMIT = 50;
@@ -34,6 +38,8 @@ export class UpgradeApplicationCommand extends CommandRunner {
     @InjectRepository(ApplicationRegistrationEntity)
     private readonly applicationRegistrationRepository: Repository<ApplicationRegistrationEntity>,
     private readonly applicationUpgradeService: ApplicationUpgradeService,
+    @InjectRepository(WorkspaceEntity)
+    private readonly workspaceRepository: Repository<WorkspaceEntity>,
   ) {
     super();
     this.logger = new CommandLogger({
@@ -94,6 +100,16 @@ export class UpgradeApplicationCommand extends CommandRunner {
     required: false,
   })
   parseYes(): boolean {
+    return true;
+  }
+
+  @Option({
+    flags: '--sync',
+    description:
+      'Upgrade the workspaces one after the other in this process instead of enqueuing jobs. Logs one result per workspace and exits with an error if any workspace fails',
+    required: false,
+  })
+  parseSync(): boolean {
     return true;
   }
 
@@ -173,13 +189,17 @@ export class UpgradeApplicationCommand extends CommandRunner {
       return;
     }
 
+    const isSync = options.sync ?? false;
+
     if (!(options.yes ?? false)) {
       const confirmationTarget = isDefined(workspaceIds)
         ? `workspace(s) ${workspaceIds.join(', ')}`
         : `${impactedWorkspaceIds.length} workspace(s)`;
 
       const isConfirmed = await askCommandConfirmation(
-        `Confirm enqueuing upgrade jobs for application ${registration.universalIdentifier} on ${confirmationTarget}. Jobs install the latest available version when they run, currently ${targetVersion}`,
+        isSync
+          ? `Confirm upgrading application ${registration.universalIdentifier} to version ${targetVersion} on ${confirmationTarget}, one workspace after the other in this process`
+          : `Confirm enqueuing upgrade jobs for application ${registration.universalIdentifier} on ${confirmationTarget}. Jobs install the latest available version when they run, currently ${targetVersion}`,
       );
 
       if (!isConfirmed) {
@@ -187,6 +207,16 @@ export class UpgradeApplicationCommand extends CommandRunner {
 
         return;
       }
+    }
+
+    if (isSync) {
+      await this.upgradeWorkspacesInProcess({
+        registration,
+        targetVersion,
+        applications: applicationsToUpgrade,
+      });
+
+      return;
     }
 
     const enqueuedJobIds =
@@ -199,6 +229,92 @@ export class UpgradeApplicationCommand extends CommandRunner {
     this.logger.log(
       `Enqueued ${enqueuedJobIds.length} upgrade job(s) on ${MessageQueue.applicationUpgradeQueue} for "${registration.name}" (${registration.universalIdentifier}) on ${impactedWorkspaceIds.length} workspace(s). Jobs install the latest available version when they run, currently ${targetVersion}`,
     );
+
+    this.logger.log(chalk.blue('Command completed!'));
+  }
+
+  // One workspace failing must not stop the others: every workspace gets its
+  // own result line, and the failure count decides the exit code at the end.
+  private async upgradeWorkspacesInProcess({
+    registration,
+    targetVersion,
+    applications,
+  }: {
+    registration: ApplicationRegistrationEntity;
+    targetVersion: string;
+    applications: ApplicationEntity[];
+  }): Promise<void> {
+    const workspaces = await this.workspaceRepository.find({
+      select: ['id', 'subdomain'],
+      where: {
+        id: In(applications.map((application) => application.workspaceId)),
+      },
+    });
+
+    const subdomainByWorkspaceId = new Map(
+      workspaces.map((workspace) => [workspace.id, workspace.subdomain]),
+    );
+
+    let failureCount = 0;
+
+    for (const { workspaceId, version } of applications) {
+      const logFields = {
+        applicationUniversalIdentifier: registration.universalIdentifier,
+        workspaceId,
+        subdomain: subdomainByWorkspaceId.get(workspaceId),
+        fromVersion: version,
+        toVersion: targetVersion,
+      };
+
+      try {
+        await this.applicationUpgradeService.upgradeApplication({
+          appRegistrationId: registration.id,
+          targetVersion,
+          workspaceId,
+        });
+
+        this.logger.log(
+          formatUpgradeLog({
+            humanMessage: `Upgraded "${registration.name}" on workspace ${workspaceId} from ${version} to ${targetVersion}`,
+            event: 'application.upgrade.success',
+            logFields,
+          }),
+        );
+      } catch (error) {
+        failureCount += 1;
+
+        const errorMessage =
+          error instanceof Error ? error.message : String(error);
+
+        this.logger.error(
+          formatUpgradeLog({
+            humanMessage: `Failed to upgrade "${registration.name}" on workspace ${workspaceId} from ${version} to ${targetVersion}: ${errorMessage}`,
+            event: 'application.upgrade.failed',
+            logFields: { ...logFields, error: errorMessage },
+          }),
+        );
+      }
+    }
+
+    this.logger.log(
+      formatUpgradeLog({
+        humanMessage: `Upgrade summary for "${registration.name}" version ${targetVersion}: ${applications.length - failureCount} workspace(s) succeeded, ${failureCount} workspace(s) failed`,
+        event: 'application.upgrade.summary',
+        logFields: {
+          applicationUniversalIdentifier: registration.universalIdentifier,
+          toVersion: targetVersion,
+          totalSuccesses: applications.length - failureCount,
+          totalFailures: failureCount,
+        },
+      }),
+    );
+
+    // The command bootstrap turns a thrown error into exit code 1.
+    if (failureCount > 0) {
+      throw new Error(
+        `Application upgrade completed with ${failureCount} workspace failure(s)`,
+      );
+    }
 
     this.logger.log(chalk.blue('Command completed!'));
   }
