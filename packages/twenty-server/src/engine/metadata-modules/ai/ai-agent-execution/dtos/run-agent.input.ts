@@ -5,6 +5,7 @@ import {
   ArrayMaxSize,
   ArrayNotEmpty,
   IsArray,
+  IsBoolean,
   IsNotEmpty,
   IsOptional,
   IsString,
@@ -67,4 +68,9 @@ export class RunAgentInputDTO {
   @Type(() => RunAgentThreadInputDTO)
   @Field(() => RunAgentThreadInputDTO, { nullable: true })
   thread?: RunAgentThreadInputDTO;
+
+  @IsOptional()
+  @IsBoolean()
+  @Field(() => Boolean, { nullable: true })
+  persist?: boolean;
 }

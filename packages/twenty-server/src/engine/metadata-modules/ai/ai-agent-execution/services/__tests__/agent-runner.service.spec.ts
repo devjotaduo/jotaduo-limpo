@@ -286,6 +286,7 @@ describe('AgentRunnerService', () => {
       outcome: {
         status: 'FAILED',
         error: 'Agent stopped: no more available credits.',
+        errorCode: 'CREDITS_EXHAUSTED',
       },
     });
   });
@@ -439,5 +440,58 @@ describe('AgentRunnerService', () => {
       threadId: 'thread-id',
       isAwaitingAnswer: true,
     });
+  });
+
+  it('runs a turn it does not record and still reports its usage', async () => {
+    const { service, agentAsyncExecutorService, agentRunConversationService } =
+      buildService(
+        buildExecution({
+          modelId: 'openai/gpt-5-mini',
+          totalCostInDollars: 0.0004,
+          creditsUsedMicro: 400,
+        }),
+      );
+
+    const { outcome, summary } = await service.run({
+      ...RUN_INPUT,
+      conversation: { threadId: 'thread-id', isCreated: true },
+      persist: false,
+    });
+
+    expect(agentAsyncExecutorService.executeAgent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        messages: MESSAGES,
+        priorMessages: [],
+        pausingTools: {},
+        baseSystemPrompt: RUN_INPUT.spec.baseSystemPrompt,
+        executionContext: RUN_INPUT.executionContext,
+      }),
+    );
+    expect(agentRunConversationService.openTurn).not.toHaveBeenCalled();
+    expect(agentRunConversationService.closeTurn).not.toHaveBeenCalled();
+    expect(outcome).toEqual({
+      status: 'COMPLETED',
+      result: { answer: 'done' },
+    });
+    expect(summary).toMatchObject({
+      modelId: 'openai/gpt-5-mini',
+      usage: { inputTokens: 1, outputTokens: 2, totalTokens: 3 },
+      cost: { totalCostInDollars: 0.0004, creditsUsedMicro: 400 },
+    });
+  });
+
+  it('records nothing of a turn it does not record that throws', async () => {
+    const { service, agentAsyncExecutorService, agentRunConversationService } =
+      buildService();
+
+    agentAsyncExecutorService.executeAgent.mockRejectedValue(
+      new Error('provider down'),
+    );
+
+    await expect(service.run({ ...RUN_INPUT, persist: false })).rejects.toThrow(
+      'provider down',
+    );
+    expect(agentRunConversationService.openTurn).not.toHaveBeenCalled();
+    expect(agentRunConversationService.failTurn).not.toHaveBeenCalled();
   });
 });

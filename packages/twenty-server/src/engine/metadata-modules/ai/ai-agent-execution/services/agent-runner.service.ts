@@ -21,6 +21,7 @@ import { type ContinueAgentRunJobData } from 'src/engine/metadata-modules/ai/ai-
 import { buildAgentRunSummary } from 'src/engine/metadata-modules/ai/ai-agent-execution/utils/build-agent-run-summary.util';
 import { sumAgentRunSummaries } from 'src/engine/metadata-modules/ai/ai-agent-execution/utils/sum-agent-run-summaries.util';
 import { AgentEntity } from 'src/engine/metadata-modules/ai/ai-agent/entities/agent.entity';
+import { AGENT_TURN_CREDITS_EXHAUSTED_ERROR } from 'src/engine/metadata-modules/ai/ai-history/constants/agent-turn-credits-exhausted-error.constant';
 import { AgentConversationReaderService } from 'src/engine/metadata-modules/ai/ai-history/services/agent-conversation-reader.service';
 import { withDedicatedAiTrace } from 'src/engine/metadata-modules/ai/ai-models/utils/with-dedicated-ai-trace.util';
 import {
@@ -196,6 +197,7 @@ export class AgentRunnerService {
       executionContext,
     } = input;
     const agentId = agent?.id ?? null;
+    const shouldPersist = input.persist !== false;
 
     if (!isCreated && !isDefined(suspension)) {
       await this.agentRunSuspensionService.assertConversationNotSuspended({
@@ -212,20 +214,22 @@ export class AgentRunnerService {
           actor: executionContext.conversationActor,
         });
 
-    const turnId = await this.tryRecording(
-      `record the agent turn in thread ${threadId}`,
-      () =>
-        this.agentRunConversationService.openTurn({
-          workspaceId,
-          threadId,
-          title: spec.title,
-          agentId,
-          senderUserWorkspaceId: prompt?.senderUserWorkspaceId ?? null,
-          senderApplicationId: prompt?.senderApplicationId ?? null,
-          createdBy: executionContext.turnCreatedBy,
-          messages: prompt?.messages ?? [],
-        }),
-    );
+    const turnId = shouldPersist
+      ? await this.tryRecording(
+          `record the agent turn in thread ${threadId}`,
+          () =>
+            this.agentRunConversationService.openTurn({
+              workspaceId,
+              threadId,
+              title: spec.title,
+              agentId,
+              senderUserWorkspaceId: prompt?.senderUserWorkspaceId ?? null,
+              senderApplicationId: prompt?.senderApplicationId ?? null,
+              createdBy: executionContext.turnCreatedBy,
+              messages: prompt?.messages ?? [],
+            }),
+        )
+      : null;
 
     const startedAtMs = Date.now();
 
@@ -242,10 +246,11 @@ export class AgentRunnerService {
           // the engine's, so it explains them; the caller's own instructions come last
           baseSystemPrompt: [
             spec.baseSystemPrompt,
-            AGENT_WAIT_PROMPT,
+            ...(shouldPersist ? [AGENT_WAIT_PROMPT] : []),
             ...(isNonEmptyString(spec.instructions) ? [spec.instructions] : []),
           ].join('\n\n'),
-          pausingTools: createAgentWaitTools(),
+          // A wait needs a saved conversation for its continuation.
+          pausingTools: shouldPersist ? createAgentWaitTools() : {},
           canAskHumans: spec.capabilities.canAskHumans,
           workspaceId,
           executionContext,
@@ -305,7 +310,7 @@ export class AgentRunnerService {
   }
 
   private async settleTurn({
-    input: { workspaceId, conversation, caller, spec },
+    input: { workspaceId, conversation, caller, spec, persist },
     execution,
     closedTurn,
     summary,
@@ -378,17 +383,21 @@ export class AgentRunnerService {
       return { status: 'SUSPENDED' };
     }
 
-    // a pause the run could not keep leaves nothing to answer
-    await this.agentRunSuspensionService.closeAwaitedCalls({
-      workspaceId,
-      threadId,
-      isAwaitingAnswer: closedTurn?.isAwaitingAnswer === true,
-    });
+    // a pause the run could not keep leaves nothing to answer. A run kept off the record never
+    // wrote to the conversation, so the calls still pending there are not its own
+    if (persist !== false) {
+      await this.agentRunSuspensionService.closeAwaitedCalls({
+        workspaceId,
+        threadId,
+        isAwaitingAnswer: closedTurn?.isAwaitingAnswer === true,
+      });
+    }
 
     if (execution.hasNoMoreAvailableCredits) {
       return {
         status: 'FAILED',
         error: 'Agent stopped: no more available credits.',
+        errorCode: AGENT_TURN_CREDITS_EXHAUSTED_ERROR.code,
       };
     }
 

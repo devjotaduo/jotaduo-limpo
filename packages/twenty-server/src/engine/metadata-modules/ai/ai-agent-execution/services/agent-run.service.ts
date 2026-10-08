@@ -34,6 +34,8 @@ import { type AgentRunExecutionContext } from 'src/engine/metadata-modules/ai/ai
 import { type RunAsWorkspaceMemberContext } from 'src/engine/metadata-modules/ai/ai-agent-execution/types/run-as-workspace-member-context.type';
 import { buildAgentRolePermissionConfig } from 'src/engine/metadata-modules/ai/ai-agent-execution/utils/build-agent-role-permission-config.util';
 import { buildAgentRunThreadId } from 'src/engine/metadata-modules/ai/ai-agent-execution/utils/build-agent-run-thread-id.util';
+import { mapAgentRunSummaryToRunAgentResult } from 'src/engine/metadata-modules/ai/ai-agent-execution/utils/map-agent-run-summary-to-run-agent-result.util';
+import { resolveRunAgentErrorCode } from 'src/engine/metadata-modules/ai/ai-agent-execution/utils/resolve-run-agent-error-code.util';
 import { resolveRunAgentMessagesOrThrow } from 'src/engine/metadata-modules/ai/ai-agent-execution/utils/resolve-run-agent-messages-or-throw.util';
 import { AGENT_RUN_BASE_SYSTEM_PROMPT } from 'src/engine/metadata-modules/ai/ai-agent/constants/agent-run-base-system-prompt.const';
 import { AgentEntity } from 'src/engine/metadata-modules/ai/ai-agent/entities/agent.entity';
@@ -52,6 +54,7 @@ type RunAgentServiceInput = {
   additionalInstructions?: string | null;
   thread?: RunAgentThread | null;
   runAsWorkspaceMemberId?: string;
+  persist?: boolean | null;
 };
 
 type AgentApiRunCaller = Extract<AgentRunCaller, { type: 'AGENT_API_RUN' }>;
@@ -122,6 +125,16 @@ export class AgentRunService
       );
     }
 
+    const shouldPersist = input.persist !== false;
+
+    // the record is how a workspace sees what its members and keys ran, so only an app opts out
+    if (!shouldPersist && !isDefined(callerApplication)) {
+      throw new AiException(
+        'Running an agent without recording it requires an application access token',
+        AiExceptionCode.RUN_AGENT_NOT_ALLOWED,
+      );
+    }
+
     const agent = await this.agentRepository.findOne(workspace.id, {
       where: {
         universalIdentifier: input.agentUniversalIdentifier,
@@ -184,11 +197,15 @@ export class AgentRunService
       },
     };
 
+    // a run kept off the record has no conversation to point the caller to
+    const resultThreadId = shouldPersist ? threadId : null;
+
     try {
-      const { outcome } = await this.agentRunnerService.run({
+      const { outcome, summary } = await this.agentRunnerService.run({
         workspaceId: workspace.id,
         conversation: { threadId, isCreated: !isDefined(thread) },
         caller,
+        persist: shouldPersist,
         spec: {
           agentId: agent.id,
           title: isNonEmptyString(thread?.title) ? thread.title : agent.label,
@@ -217,11 +234,16 @@ export class AgentRunService
       });
 
       return {
-        threadId,
+        threadId: resultThreadId,
         status: outcome.status,
         result: outcome.status === 'COMPLETED' ? outcome.result : null,
         error: outcome.status === 'FAILED' ? outcome.error : null,
         success: outcome.status !== 'FAILED',
+        errorCode:
+          outcome.status === 'FAILED'
+            ? (outcome.errorCode ?? AiExceptionCode.AGENT_EXECUTION_FAILED)
+            : null,
+        ...mapAgentRunSummaryToRunAgentResult(summary),
       };
     } catch (error) {
       if (
@@ -238,11 +260,12 @@ export class AgentRunService
       );
 
       return {
-        threadId,
+        threadId: resultThreadId,
         status: 'FAILED',
         result: null,
         error: 'Agent execution failed.',
         success: false,
+        errorCode: resolveRunAgentErrorCode(error),
       };
     }
   }
