@@ -35,6 +35,7 @@ Como ler cada seção:
 | 0016 | `runAgent` aceita `maxSteps` | servidor | app (`PASSOS_DO_AGENTE`) |
 | 0018 | Rosto da IA no estado vazio do chat de IA | tela | pessoa |
 | 0020 | Rosto animado no chat de IA e as boas-vindas do JotaDuo | tela | pessoa |
+| 0022 | `runAgent` aceita `canWait: false` | servidor | app (bateria de agentes) |
 | — | `AgentEntity` sem `evaluationInputs` | servidor | upgrade |
 | — | CI e imagem no `oracle-sp`, só os workflows úteis | repositório | operação |
 
@@ -169,7 +170,7 @@ do GraphQL.
 - **Entrada:** `persist: false` roda sem abrir turno, sem gravar mensagens e sem oferecer as
   ferramentas de espera. Uma pausa nessa execução falha sem fechar as chamadas pendentes de uma
   conversa existente. A cobrança continua. Só token de app pode pedir; outro chamador recebe
-  `RUN_AGENT_NOT_ALLOWED`.
+  `RUN_AGENT_NOT_ALLOWED`. Para só tirar as esperas, gravando a execução, veja o 0022.
 - **Limites:** quando a execução lança erro antes de começar, `usage` e `cost` voltam nulos. Os
   clientes GraphQL gerados do Twenty não foram refeitos.
 
@@ -277,6 +278,33 @@ do GraphQL.
 - **Limites:** edita o catálogo `pt-BR.po` do front ("Como posso ajudar?", os atalhos e o texto do
   campo), o trecho que mais tende a conflitar numa atualização do Twenty. Abaixo de ~768 px o
   Twenty não mostra o estado vazio.
+
+## 0022: `runAgent` aceita `canWait: false`
+
+- **Para quem:** app. A bateria de agentes do `jotaduo-apps` (`src/__tests__/agentes/modelo-local.ts`)
+  chama com chave de API, que não pode pedir `persist: false`; com `canWait: false` ela mede os
+  agentes com as mesmas ferramentas e o mesmo prompt que o app usa na produção.
+- **O que muda:** com `canWait: false`, a execução não recebe `wait_for_event` nem
+  `wait_for_duration`, e o prompt fica sem o parágrafo que as explica (`AGENT_WAIT_PROMPT`). A
+  execução continua gravada como qualquer outra: abre turno, grava as mensagens e devolve o
+  `threadId`, e o workspace vê o que a chave rodou.
+  - Qualquer chamador pode pedir (token de app, membro, chave de API): só tira ferramentas.
+  - Fica na especificação salva da execução (`capabilities.canWait`, ao lado de `canAskHumans`).
+    Uma especificação salva antes do campo continua podendo esperar.
+  - `persist: false` continua tirando as esperas, com ou sem `canWait`.
+- **Como usar:**
+
+  ```graphql
+  mutation RunAgent($input: RunAgentInput!) {
+    runAgent(input: $input) { status result error success toolCalls { toolName state } }
+  }
+  # variables: { "input": { "agentUniversalIdentifier": "...", "input": [...], "canWait": false } }
+  ```
+
+  Pelo SDK, `runAgent({ ..., canWait: false })` (`RunAgentInput` do `twenty-shared`).
+- **Limites:** sem `canWait`, ou com `true`/`null`, nada muda (a execução gravada oferece as
+  esperas). O campo não tira as perguntas a humanos, que o `runAgent` já não oferece. Os clientes
+  GraphQL gerados do Twenty não foram refeitos.
 
 ## `AgentEntity` sem `evaluationInputs`
 

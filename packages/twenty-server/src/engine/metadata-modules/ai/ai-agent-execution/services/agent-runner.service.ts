@@ -198,6 +198,8 @@ export class AgentRunnerService {
     } = input;
     const agentId = agent?.id ?? null;
     const shouldPersist = input.persist !== false;
+    // a wait needs a saved conversation for its continuation
+    const canWait = shouldPersist && spec.capabilities.canWait !== false;
 
     if (!isCreated && !isDefined(suspension)) {
       await this.agentRunSuspensionService.assertConversationNotSuspended({
@@ -247,11 +249,10 @@ export class AgentRunnerService {
           // the engine's, so it explains them; the caller's own instructions come last
           baseSystemPrompt: [
             spec.baseSystemPrompt,
-            ...(shouldPersist ? [AGENT_WAIT_PROMPT] : []),
+            ...(canWait ? [AGENT_WAIT_PROMPT] : []),
             ...(isNonEmptyString(spec.instructions) ? [spec.instructions] : []),
           ].join('\n\n'),
-          // A wait needs a saved conversation for its continuation.
-          pausingTools: shouldPersist ? createAgentWaitTools() : {},
+          pausingTools: canWait ? createAgentWaitTools() : {},
           canAskHumans: spec.capabilities.canAskHumans,
           workspaceId,
           executionContext,

@@ -500,6 +500,33 @@ describe('AgentRunService', () => {
     },
   );
 
+  it('records the run of an API key that cannot wait', async () => {
+    const { service, agentRunnerService } = buildService();
+
+    const result = await run(
+      service,
+      { input: userInput('Hello'), canWait: false },
+      { isCalledByApplication: false },
+    );
+
+    const { persist, spec } = runInput(agentRunnerService);
+
+    expect(persist).toBe(true);
+    expect(spec.capabilities).toEqual({ canAskHumans: false, canWait: false });
+    expect(result.threadId).toEqual(expect.any(String));
+  });
+
+  it.each([[true], [null], [undefined]])(
+    'lets the run wait when canWait is %s',
+    async (canWait) => {
+      const { service, agentRunnerService } = buildService();
+
+      await run(service, { input: userInput('Hello'), canWait });
+
+      expect(runInput(agentRunnerService).spec.capabilities.canWait).toBe(true);
+    },
+  );
+
   it('refuses a thread with a blank key', async () => {
     const { service, agentRunnerService } = buildService();
 

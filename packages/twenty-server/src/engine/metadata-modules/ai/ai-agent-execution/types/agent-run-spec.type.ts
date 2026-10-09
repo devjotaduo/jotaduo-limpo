@@ -12,6 +12,8 @@ export type AgentRunSpec = {
   capabilities: {
     // ask_question, request_form and propose_tool_call, answered from the conversation
     canAskHumans: boolean;
+    // wait_for_event and wait_for_duration; a spec saved before this field can wait
+    canWait?: boolean;
   };
   additionalExcludedToolNames?: string[];
   maxSteps?: number;

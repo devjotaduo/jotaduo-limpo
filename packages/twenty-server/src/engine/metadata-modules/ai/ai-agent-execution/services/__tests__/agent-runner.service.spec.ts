@@ -1,6 +1,8 @@
 import { Logger } from '@nestjs/common';
 
 import { UsageOperationType } from 'src/engine/core-modules/usage/enums/usage-operation-type.enum';
+import { WAIT_FOR_DURATION_TOOL_NAME } from 'src/engine/metadata-modules/ai/ai-agent-execution/pausing-tools/constants/wait-for-duration-tool-name.constant';
+import { WAIT_FOR_EVENT_TOOL_NAME } from 'src/engine/metadata-modules/ai/ai-agent-execution/pausing-tools/constants/wait-for-event-tool-name.constant';
 import { AgentRunnerService } from 'src/engine/metadata-modules/ai/ai-agent-execution/services/agent-runner.service';
 import { type AgentExecutionResult } from 'src/engine/metadata-modules/ai/ai-agent-execution/types/agent-execution-result.type';
 import { type AgentRunnerRunInput } from 'src/engine/metadata-modules/ai/ai-agent-execution/types/agent-runner-run-input.type';
@@ -220,6 +222,40 @@ describe('AgentRunnerService', () => {
       );
     },
   );
+
+  it('records a run that cannot wait without offering or explaining the waits', async () => {
+    const { service, agentAsyncExecutorService, agentRunConversationService } =
+      buildService();
+
+    await service.run({
+      ...RUN_INPUT,
+      spec: {
+        ...RUN_INPUT.spec,
+        capabilities: { canAskHumans: false, canWait: false },
+      },
+    });
+
+    expect(agentAsyncExecutorService.executeAgent).toHaveBeenCalledWith(
+      expect.objectContaining({
+        pausingTools: {},
+        baseSystemPrompt: RUN_INPUT.spec.baseSystemPrompt,
+      }),
+    );
+    expect(agentRunConversationService.openTurn).toHaveBeenCalled();
+    expect(agentRunConversationService.closeTurn).toHaveBeenCalled();
+  });
+
+  it('offers the waits to a run spec saved before canWait', async () => {
+    const { service, agentAsyncExecutorService } = buildService();
+
+    await service.run(RUN_INPUT);
+
+    expect(
+      Object.keys(
+        agentAsyncExecutorService.executeAgent.mock.calls[0][0].pausingTools,
+      ),
+    ).toEqual([WAIT_FOR_EVENT_TOOL_NAME, WAIT_FOR_DURATION_TOOL_NAME]);
+  });
 
   it('locks a conversation it just created without reading it', async () => {
     const {

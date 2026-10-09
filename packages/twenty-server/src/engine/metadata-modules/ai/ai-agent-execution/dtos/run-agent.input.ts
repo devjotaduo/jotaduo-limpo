@@ -77,6 +77,11 @@ export class RunAgentInputDTO {
   persist?: boolean;
 
   @IsOptional()
+  @IsBoolean()
+  @Field(() => Boolean, { nullable: true })
+  canWait?: boolean;
+
+  @IsOptional()
   @IsInt()
   @Min(1)
   @Field(() => Int, { nullable: true })

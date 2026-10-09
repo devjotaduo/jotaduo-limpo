@@ -56,6 +56,7 @@ type RunAgentServiceInput = {
   thread?: RunAgentThread | null;
   runAsWorkspaceMemberId?: string;
   persist?: boolean | null;
+  canWait?: boolean | null;
   maxSteps?: number | null;
 };
 
@@ -217,9 +218,11 @@ export class AgentRunService
           baseSystemPrompt: AGENT_RUN_BASE_SYSTEM_PROMPT,
           // kept with the run rather than in its messages, so a run that waits still has them when it goes on
           instructions: input.additionalInstructions ?? null,
-          // the call returns before anyone could answer, so the run can wait but not ask
+          // the call returns before anyone could answer, so the run can wait but not ask. Turning the
+          // waits off only takes tools away and the run is still recorded, so any caller can
           capabilities: {
             canAskHumans: false,
+            canWait: input.canWait !== false,
           },
           toolLoadingStrategy: 'lazy',
         },
