@@ -10,6 +10,7 @@ import { useLayoutRenderingContext } from '@/ui/layout/contexts/LayoutRenderingC
 import { useWorkspaceSurface } from '@/ui/layout/hooks/useWorkspaceSurface';
 import { isDefined } from 'twenty-shared/utils';
 import { useIsMobile } from 'twenty-ui/utilities';
+import { PageLayoutType } from '~/generated-metadata/graphql';
 
 export const usePageLayoutRenderableTabs = () => {
   const isMobile = useIsMobile();
@@ -31,6 +32,7 @@ export const usePageLayoutRenderableTabs = () => {
     tabs: currentPageLayout.tabs,
     isEditMode: isPageLayoutInEditMode,
     context: widgetVisibilityContext,
+    includeEmptyTabs: currentPageLayout.type === PageLayoutType.STANDALONE_PAGE,
   });
 
   // Edit mode keeps every tab visible so unsupported widgets can still be removed.

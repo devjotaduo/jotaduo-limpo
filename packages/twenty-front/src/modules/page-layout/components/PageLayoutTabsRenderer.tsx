@@ -4,6 +4,7 @@ import { PageLayoutWidgetDndProvider } from '@/page-layout/components/dnd/PageLa
 import { PageLayoutLeftPanel } from '@/page-layout/components/PageLayoutLeftPanel';
 import { PageLayoutPrerenderedTabIdsResetEffect } from '@/page-layout/components/PageLayoutPrerenderedTabIdsResetEffect';
 import { PageLayoutRecordIdentifierBar } from '@/page-layout/components/PageLayoutRecordIdentifierBar';
+import { PageLayoutStandaloneIdentifierBar } from '@/page-layout/components/PageLayoutStandaloneIdentifierBar';
 import { PageLayoutScrollResetEffect } from '@/page-layout/components/PageLayoutScrollResetEffect';
 import { PageLayoutTabList } from '@/page-layout/components/PageLayoutTabList';
 import { PageLayoutTabListEffect } from '@/page-layout/components/PageLayoutTabListEffect';
@@ -203,7 +204,14 @@ export const PageLayoutTabsRenderer = () => {
     workspaceSurface.type !== 'side-panel' &&
     !isMobile;
 
-  const shouldRenderTabList = sortedTabs.length > 1 || isPageLayoutInEditMode;
+  const shouldRenderStandaloneIdentifierBar =
+    currentPageLayout.type === PageLayoutType.STANDALONE_PAGE &&
+    isDefined(pinnedLeftTab);
+  const shouldRenderIdentifierBar =
+    shouldRenderRecordIdentifierBar || shouldRenderStandaloneIdentifierBar;
+
+  const shouldRenderTabList =
+    sortedTabs.length > 1 || isPageLayoutInEditMode || isDefined(pinnedLeftTab);
   const behaveAsLinks =
     workspaceSurface.type === 'main' && !isPageLayoutInEditMode;
   const hasTabPanels = shouldRenderTabList && !behaveAsLinks;
@@ -212,9 +220,7 @@ export const PageLayoutTabsRenderer = () => {
     <PageLayoutTabList
       aria-label={currentPageLayout.name}
       className="page-layout-tab-list-print-hidden"
-      presentation={
-        shouldRenderRecordIdentifierBar ? 'identifier-bar' : 'standalone'
-      }
+      presentation={shouldRenderIdentifierBar ? 'identifier-bar' : 'standalone'}
       centerTabs={shouldRenderRecordIdentifierBar && !isDefined(pinnedLeftTab)}
       tabs={sortedTabs}
       behaveAsLinks={behaveAsLinks}
@@ -246,6 +252,14 @@ export const PageLayoutTabsRenderer = () => {
               tabList={tabList}
             />
           )}
+          {shouldRenderStandaloneIdentifierBar && isDefined(pinnedLeftTab) && (
+            <PageLayoutStandaloneIdentifierBar
+              title={currentPageLayout.name}
+              pinnedTab={pinnedLeftTab}
+              isPinnedTabEditable={isPageLayoutInEditMode}
+              tabList={tabList}
+            />
+          )}
 
           <StyledContainer hasPinnedTab={isDefined(pinnedLeftTab)}>
             {isDefined(pinnedLeftTab) && (
@@ -265,7 +279,7 @@ export const PageLayoutTabsRenderer = () => {
                   undefined
                 }
               />
-              {!shouldRenderRecordIdentifierBar && tabList}
+              {!shouldRenderIdentifierBar && tabList}
 
               <StyledScrollWrapperContainer>
                 <ScrollWrapper

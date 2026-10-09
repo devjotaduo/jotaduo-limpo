@@ -25,6 +25,7 @@ const PAGE_LAYOUT_MANIFEST: Required<Omit<PageLayoutManifest, 'tabs'>> = {
   universalIdentifier: PAGE_LAYOUT_UID,
   name: 'Pet page',
   type: PageLayoutType.RECORD_PAGE,
+  isFirstTabPinned: true,
   objectUniversalIdentifier: OBJECT_UID,
   defaultTabToFocusOnMobileAndSidePanelUniversalIdentifier: TAB_UID,
 };
@@ -43,6 +44,18 @@ const forward = (pageLayoutManifest: PageLayoutManifest) =>
   });
 
 describe('fromFlatPageLayoutToPageLayoutManifest', () => {
+  it.each([true, false])(
+    'keeps the standalone pinned choice on export: %s',
+    (isFirstTabPinned) => {
+      const manifest = { ...MINIMAL_PAGE_LAYOUT_MANIFEST, isFirstTabPinned };
+      expect(
+        fromFlatPageLayoutToPageLayoutManifest({
+          flatPageLayout: forward(manifest),
+        }),
+      ).toEqual(manifest);
+    },
+  );
+
   it('should reproduce the manifest after a forward then an inverse conversion', () => {
     expect(
       fromFlatPageLayoutToPageLayoutManifest({
@@ -57,7 +70,7 @@ describe('fromFlatPageLayoutToPageLayoutManifest', () => {
       fromFlatPageLayoutToPageLayoutManifest({
         flatPageLayout: forward(MINIMAL_PAGE_LAYOUT_MANIFEST),
       }),
-    ).toEqual(MINIMAL_PAGE_LAYOUT_MANIFEST);
+    ).toEqual({ ...MINIMAL_PAGE_LAYOUT_MANIFEST, isFirstTabPinned: false });
   });
 
   it('should reproduce the flat entity after an inverse then a forward conversion', () => {

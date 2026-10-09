@@ -7,7 +7,6 @@ import { getScrollWrapperInstanceIdFromPageLayoutAndRecord } from '@/page-layout
 import { getTabLayoutMode } from '@/page-layout/utils/getTabLayoutMode';
 import { useLayoutRenderingContext } from '@/ui/layout/contexts/LayoutRenderingContext';
 import { useWorkspaceSurfaceScopedComponentInstanceId } from '@/ui/layout/hooks/useWorkspaceSurfaceScopedComponentInstanceId';
-import { useTargetRecord } from '@/ui/layout/contexts/useTargetRecord';
 import { ScrollWrapper } from '@/ui/utilities/scroll/components/ScrollWrapper';
 import { styled } from '@linaria/react';
 import { PageLayoutType } from '~/generated-metadata/graphql';
@@ -41,8 +40,7 @@ export const PageLayoutLeftPanel = ({
   pinnedLeftTabId,
 }: PageLayoutLeftPanelProps) => {
   const { currentPageLayout } = useCurrentPageLayout();
-  const targetRecordIdentifier = useTargetRecord();
-  const { layoutType } = useLayoutRenderingContext();
+  const { layoutType, targetRecordIdentifier } = useLayoutRenderingContext();
   const pinnedTab = usePageLayoutTabWithVisibleWidgetsOrThrow(pinnedLeftTabId);
 
   const scrollWrapperInstanceId = useWorkspaceSurfaceScopedComponentInstanceId(
@@ -54,7 +52,10 @@ export const PageLayoutLeftPanel = ({
       pageLayoutTabId: pinnedLeftTabId,
     }),
   );
-  if (currentPageLayout?.type !== PageLayoutType.RECORD_PAGE) {
+  if (
+    currentPageLayout?.type !== PageLayoutType.RECORD_PAGE &&
+    currentPageLayout?.type !== PageLayoutType.STANDALONE_PAGE
+  ) {
     return null;
   }
 
@@ -68,7 +69,7 @@ export const PageLayoutLeftPanel = ({
       <PageLayoutScrollResetEffect
         pageLayoutTabId={pinnedLeftTabId}
         scrollWrapperInstanceId={scrollWrapperInstanceId}
-        targetRecordId={targetRecordIdentifier.id}
+        targetRecordId={targetRecordIdentifier?.id}
       />
 
       {/* The pinned left panel is always a column of cards, even with a single

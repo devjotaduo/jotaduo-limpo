@@ -1,6 +1,12 @@
 import { Field, InputType } from '@nestjs/graphql';
 
-import { IsEnum, IsOptional, IsString, IsUUID } from 'class-validator';
+import {
+  IsBoolean,
+  IsEnum,
+  IsOptional,
+  IsString,
+  IsUUID,
+} from 'class-validator';
 
 import { UUIDScalarType } from 'src/engine/api/graphql/workspace-schema-builder/graphql-types/scalars';
 import { PageLayoutType } from 'twenty-shared/types';
@@ -21,4 +27,9 @@ export class UpdatePageLayoutInput {
   @IsUUID()
   @IsOptional()
   objectMetadataId?: string | null;
+
+  @Field({ nullable: true })
+  @IsBoolean()
+  @IsOptional()
+  isFirstTabPinned?: boolean;
 }

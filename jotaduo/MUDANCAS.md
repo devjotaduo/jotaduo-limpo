@@ -36,8 +36,36 @@ Como ler cada seção:
 | 0018 | Rosto da IA no estado vazio do chat de IA | tela | pessoa |
 | 0020 | Rosto animado no chat de IA e as boas-vindas do JotaDuo | tela | pessoa |
 | 0022 | `runAgent` aceita `canWait: false` | servidor | app (bateria de agentes) |
+| 0023 | Página standalone nativa com ou sem barra lateral | tela + servidor + SDK | pessoa, app |
 | — | `AgentEntity` sem `evaluationInputs` | servidor | upgrade |
 | — | CI e imagem no `oracle-sp`, só os workflows úteis | repositório | operação |
+
+## 0023: página standalone nativa com ou sem barra lateral
+
+- **Para quem:** pessoa e app.
+- **O que muda:** `STANDALONE_PAGE` aceita fixar a primeira aba em uma coluna nativa de
+  348 px, com título da página e controle de edição, sem depender de Person ou outro registro.
+  Desafixar a aba devolve a largura total. Abas deliberadamente vazias continuam acessíveis.
+- **Como usar no app:** `definePageLayout({ type: 'STANDALONE_PAGE', isFirstTabPinned: true,
+  tabs: [...] })` fixa a primeira aba por posição; `false` mantém todas na barra superior.
+  É necessário ter pelo menos duas abas para usar a coluna. A opção também é preservada no pull.
+- **Configuração pontual:** `updatePageLayout(id, { isFirstTabPinned: false })` altera
+  somente a escolha de coluna, preservando abas e widgets. O DTO aceita apenas booleanos.
+- **Como usar na tela:** no modo de personalização, use Fixar aba ou Desafixar aba nas
+  configurações nativas da aba e salve o layout. O botão de alfinete sobre a coluna abre essas
+  configurações. Cancelar usa o fluxo de rascunho existente.
+- **Padrão:** novos layouts standalone, tanto pela API quanto pelo manifesto, começam sem
+  coluna quando a opção é omitida. Páginas de registro preservam o padrão anterior.
+- **Limites:** no celular ou painel lateral, a aba fixada volta à lista para permanecer
+  acessível. Widgets que exigem um registro continuam exigindo um registro. Nenhuma entidade,
+  coluna ou migração de banco é criada.
+- **Ativação:** versões antigas gravavam `isFirstTabPinned: true` em standalone mesmo sem
+  usar o campo na tela. Ao atualizar uma instalação, defina `false` nas páginas que devem
+  continuar com largura total e `true` somente nas páginas com coluna; não exclua layouts.
+  O app de exemplo mantém os UUIDs existentes e usa `apply --no-delete`.
+- **Verificação:** testes do renderer sem registro, escolha com/sem coluna, superfícies
+  compactas, abas vazias, controles de edição e ida/volta do manifesto. A checagem do front
+  inclui agora `page-layout` e as configurações de layout no painel lateral.
 
 ## O que saiu, e por quê
 

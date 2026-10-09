@@ -554,8 +554,6 @@ const EXPORTED_KINDS: ExportedKind[] = [
     workspaceLocalProperties: [],
     knownGaps: {
       ...PAGE_LAYOUT_KIND_GAPS,
-      isFirstTabPinned:
-        'workspace-owned: the sync keeps the live value, so the forward default never diffs',
     },
   },
   {

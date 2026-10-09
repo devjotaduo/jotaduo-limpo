@@ -88,17 +88,17 @@ export const SidePanelPageLayoutTabSettingsContent = ({
   );
   if (currentIndex < 0) return null;
   const tab = tabsSorted[currentIndex];
-  const isRecordPage = pageLayoutDraft.type === PageLayoutType.RECORD_PAGE;
+  const canPinTabs =
+    pageLayoutDraft.type === PageLayoutType.RECORD_PAGE ||
+    pageLayoutDraft.type === PageLayoutType.STANDALONE_PAGE;
   const hasPinnedTab =
-    isRecordPage &&
-    tabsSorted.length > 1 &&
-    getIsFirstTabPinned(pageLayoutDraft);
+    canPinTabs && tabsSorted.length > 1 && getIsFirstTabPinned(pageLayoutDraft);
   const canMoveLeft = hasPinnedTab ? currentIndex > 1 : currentIndex > 0;
   const canMoveRight = currentIndex < tabsSorted.length - 1;
   const canDelete = tabsSorted.length > 1;
   const isAlreadyPinned = hasPinnedTab && currentIndex === 0;
   const canSetAsPinned =
-    isRecordPage && !isAlreadyPinned && tabsSorted.length > 1;
+    canPinTabs && !isAlreadyPinned && tabsSorted.length > 1;
   const canUnpin = isAlreadyPinned;
 
   const isResetToDefaultDisabled =

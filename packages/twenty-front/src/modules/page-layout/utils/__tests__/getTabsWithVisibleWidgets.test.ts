@@ -61,6 +61,30 @@ describe('getTabsWithVisibleWidgets', () => {
   });
 
   describe('in read mode', () => {
+    it('keeps deliberately empty standalone tabs and filters conditional widgets', () => {
+      const tabs = [
+        createMockTab('details', []),
+        createMockTab('main', []),
+        { ...createMockTab('inactive', []), isActive: false },
+        createMockTab('mobile-only', [
+          createMockWidget('hidden', {
+            and: [{ '===': [{ var: 'device' }, 'MOBILE'] }],
+          }),
+        ]),
+      ];
+
+      const result = getTabsWithVisibleWidgets({
+        tabs,
+        isEditMode: false,
+        includeEmptyTabs: true,
+        context: buildWidgetVisibilityContext({
+          isMobile: false,
+          isInSidePanel: false,
+        }),
+      });
+
+      expect(result.map((tab) => tab.id)).toEqual(['details', 'main']);
+    });
     it('should filter out tabs with no visible widgets', () => {
       const tabs = [
         createMockTab('tab-1', [createMockWidget('widget-1')]),

@@ -329,6 +329,7 @@ const PET_PAGE_MANIFEST: PageLayoutManifest = {
   universalIdentifier: PET_PAGE_UID,
   name: 'Pet page',
   type: PageLayoutType.RECORD_PAGE,
+  isFirstTabPinned: true,
   objectUniversalIdentifier: PET_UID,
 };
 

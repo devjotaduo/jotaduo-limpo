@@ -16,6 +16,7 @@ export const fromFlatPageLayoutToPageLayoutManifest = ({
   universalIdentifier: flatPageLayout.universalIdentifier,
   name: flatPageLayout.name,
   type: flatPageLayout.type,
+  isFirstTabPinned: flatPageLayout.isFirstTabPinned,
   ...(isDefined(flatPageLayout.objectMetadataUniversalIdentifier)
     ? {
         objectUniversalIdentifier:

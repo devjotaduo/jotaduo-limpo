@@ -22,6 +22,7 @@ describe('fromPageLayoutManifestToUniversalFlatPageLayout', () => {
     );
     expect(result.name).toBe('My Page Layout');
     expect(result.type).toBe(PageLayoutType.STANDALONE_PAGE);
+    expect(result.isFirstTabPinned).toBe(false);
     expect(result.objectMetadataUniversalIdentifier).toBeNull();
     expect(
       result.defaultTabToFocusOnMobileAndSidePanelUniversalIdentifier,
@@ -43,8 +44,27 @@ describe('fromPageLayoutManifestToUniversalFlatPageLayout', () => {
 
     expect(result.name).toBe('Record Layout');
     expect(result.type).toBe(PageLayoutType.RECORD_PAGE);
+    expect(result.isFirstTabPinned).toBe(true);
     expect(result.objectMetadataUniversalIdentifier).toBe('obj-uuid-1');
   });
+
+  it.each([true, false])(
+    'preserves the explicit pinned choice: %s',
+    (isFirstTabPinned) => {
+      const result = fromPageLayoutManifestToUniversalFlatPageLayout({
+        pageLayoutManifest: {
+          universalIdentifier: 'dca88fc0-fd01-4e84-80d7-6e7cb495502c',
+          name: 'Standalone',
+          type: PageLayoutType.STANDALONE_PAGE,
+          isFirstTabPinned,
+        },
+        applicationUniversalIdentifier,
+        now,
+      });
+
+      expect(result.isFirstTabPinned).toBe(isFirstTabPinned);
+    },
+  );
 
   it('should convert a fully specified page layout manifest', () => {
     const result = fromPageLayoutManifestToUniversalFlatPageLayout({

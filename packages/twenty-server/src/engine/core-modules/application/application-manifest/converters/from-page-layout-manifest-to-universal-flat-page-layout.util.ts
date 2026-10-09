@@ -1,4 +1,5 @@
 import { type PageLayoutManifest } from 'twenty-shared/application';
+import { PageLayoutType } from 'twenty-shared/types';
 
 import { type UniversalFlatPageLayout } from 'src/engine/workspace-manager/workspace-migration/universal-flat-entity/types/universal-flat-page-layout.type';
 
@@ -24,7 +25,9 @@ export const fromPageLayoutManifestToUniversalFlatPageLayout = ({
     navigationMenuItemUniversalIdentifiers: [],
     tabUniversalIdentifiers: [],
     isSystemSideEffect: false,
-    isFirstTabPinned: true,
+    isFirstTabPinned:
+      pageLayoutManifest.isFirstTabPinned ??
+      pageLayoutManifest.type !== PageLayoutType.STANDALONE_PAGE,
     createdAt: now,
     updatedAt: now,
     deletedAt: null,

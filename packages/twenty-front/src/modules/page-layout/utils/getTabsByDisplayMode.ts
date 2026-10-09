@@ -21,8 +21,9 @@ export const getTabsByDisplayMode = ({
     isMobile ||
     isInSidePanel ||
     !isFirstTabPinned ||
-    pageLayoutType !== PageLayoutType.RECORD_PAGE ||
-    tabs.length === 1
+    (pageLayoutType !== PageLayoutType.RECORD_PAGE &&
+      pageLayoutType !== PageLayoutType.STANDALONE_PAGE) ||
+    tabs.length < 2
   ) {
     return {
       tabsToRenderInTabList: tabs,

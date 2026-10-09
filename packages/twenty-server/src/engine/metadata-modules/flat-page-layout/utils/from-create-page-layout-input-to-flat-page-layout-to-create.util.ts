@@ -45,7 +45,8 @@ export const fromCreatePageLayoutInputToFlatPageLayoutToCreate = ({
     objectMetadataId: createPageLayoutInput.objectMetadataId ?? null,
     objectMetadataUniversalIdentifier,
     isSystemSideEffect: false,
-    isFirstTabPinned: true,
+    isFirstTabPinned:
+      createPageLayoutInput.type !== PageLayoutType.STANDALONE_PAGE,
     workspaceId,
     createdAt,
     updatedAt: createdAt,

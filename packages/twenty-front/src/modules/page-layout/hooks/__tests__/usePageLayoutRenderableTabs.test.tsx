@@ -5,6 +5,8 @@ import { PageLayoutType } from '~/generated-metadata/graphql';
 
 let mockIsMobile = false;
 let mockWorkspaceSurfaceType: 'main' | 'side-panel' = 'main';
+let mockPageLayoutType: PageLayoutType = PageLayoutType.RECORD_PAGE;
+let mockIsFirstTabPinned = false;
 
 const homeTab: PageLayoutTab = {
   isSystemSideEffect: false,
@@ -20,6 +22,8 @@ const homeTab: PageLayoutTab = {
   updatedAt: '2026-08-07T00:00:00.000Z',
 };
 
+let mockTabs = [homeTab];
+
 jest.mock('@/object-metadata/hooks/useObjectMetadataItems', () => ({
   useObjectMetadataItems: () => ({ objectMetadataItems: [] }),
 }));
@@ -28,8 +32,9 @@ jest.mock('@/page-layout/hooks/useCurrentPageLayoutOrThrow', () => ({
   useCurrentPageLayoutOrThrow: () => ({
     currentPageLayout: {
       id: 'page-layout-id',
-      type: PageLayoutType.RECORD_PAGE,
-      tabs: [homeTab],
+      type: mockPageLayoutType,
+      isFirstTabPinned: mockIsFirstTabPinned,
+      tabs: mockTabs,
     },
   }),
 }));
@@ -53,9 +58,36 @@ jest.mock('twenty-ui/utilities', () => ({
 }));
 
 describe('usePageLayoutRenderableTabs', () => {
+  it.each([true, false])(
+    'keeps empty standalone tabs with pinned=%s',
+    (isFirstTabPinned) => {
+      mockPageLayoutType = PageLayoutType.STANDALONE_PAGE;
+      mockIsFirstTabPinned = isFirstTabPinned;
+      const activityTab = {
+        ...homeTab,
+        id: 'activity-tab-id',
+        title: 'Activity',
+        position: 1,
+      };
+      mockTabs = [homeTab, activityTab];
+
+      const { result } = renderHook(() => usePageLayoutRenderableTabs());
+
+      expect(result.current.pinnedLeftTab?.id).toBe(
+        isFirstTabPinned ? homeTab.id : undefined,
+      );
+      expect(result.current.tabsToRenderInTabList.map((tab) => tab.id)).toEqual(
+        isFirstTabPinned ? [activityTab.id] : [homeTab.id, activityTab.id],
+      );
+    },
+  );
+
   beforeEach(() => {
     mockIsMobile = false;
     mockWorkspaceSurfaceType = 'main';
+    mockPageLayoutType = PageLayoutType.RECORD_PAGE;
+    mockIsFirstTabPinned = false;
+    mockTabs = [homeTab];
   });
 
   it.each([

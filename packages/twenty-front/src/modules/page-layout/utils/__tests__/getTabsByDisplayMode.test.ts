@@ -33,6 +33,62 @@ describe('getTabsByDisplayMode', () => {
     tabs,
   });
 
+  describe('standalone pages', () => {
+    it.each([true, false])(
+      'supports pinned=%s without changing the tab order',
+      (isFirstTabPinned) => {
+        const tabs = [
+          { ...createMockTab('main'), position: 1 },
+          { ...createMockTab('details'), position: 0 },
+        ];
+        const result = getTabsByDisplayMode({
+          tabs,
+          pageLayoutType: PageLayoutType.STANDALONE_PAGE,
+          isMobile: false,
+          isInSidePanel: false,
+          isFirstTabPinned,
+        });
+
+        expect(result.pinnedLeftTab?.id).toBe(
+          isFirstTabPinned ? 'details' : undefined,
+        );
+        expect(result.tabsToRenderInTabList.map((tab) => tab.id)).toEqual(
+          isFirstTabPinned ? ['main'] : ['main', 'details'],
+        );
+      },
+    );
+
+    it.each([
+      { isMobile: true, isInSidePanel: false },
+      { isMobile: false, isInSidePanel: true },
+    ])('keeps all tabs accessible in compact surfaces: %o', (surface) => {
+      const tabs = [createMockTab('details'), createMockTab('main')];
+      const result = getTabsByDisplayMode({
+        tabs,
+        ...surface,
+        pageLayoutType: PageLayoutType.STANDALONE_PAGE,
+        isFirstTabPinned: true,
+      });
+
+      expect(result.pinnedLeftTab).toBeUndefined();
+      expect(result.tabsToRenderInTabList).toEqual(tabs);
+    });
+
+    it('keeps a single standalone tab full width', () => {
+      const tabs = [createMockTab('main')];
+      const result = getTabsByDisplayMode({
+        tabs,
+        pageLayoutType: PageLayoutType.STANDALONE_PAGE,
+        isMobile: false,
+        isInSidePanel: false,
+        isFirstTabPinned: true,
+      });
+
+      expect(result.pinnedLeftTab).toBeUndefined();
+      expect(result.tabsToRenderInTabList).toEqual(tabs);
+    });
+  });
+
   describe('when isMobile is true', () => {
     it('should return all tabs in tabsToRenderInTabList', () => {
       const tabs = [

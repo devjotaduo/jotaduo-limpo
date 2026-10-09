@@ -6,12 +6,14 @@ type GetTabsWithVisibleWidgetsParams = {
   tabs: PageLayoutTab[];
   isEditMode: boolean;
   context: WidgetVisibilityContext;
+  includeEmptyTabs?: boolean;
 };
 
 export const getTabsWithVisibleWidgets = ({
   tabs,
   isEditMode,
   context,
+  includeEmptyTabs = false,
 }: GetTabsWithVisibleWidgetsParams): PageLayoutTab[] => {
   const activeTabs = tabs.filter((tab) => tab.isActive);
 
@@ -24,8 +26,13 @@ export const getTabsWithVisibleWidgets = ({
     widgets: filterVisibleWidgets({ widgets: tab.widgets, context }),
   }));
 
+  const emptyTabIds = new Set(
+    activeTabs.filter((tab) => tab.widgets.length === 0).map((tab) => tab.id),
+  );
+
   const tabsWithVisibleWidgets = tabsWithFilteredWidgets.filter(
-    (tab) => tab.widgets.length > 0,
+    (tab) =>
+      tab.widgets.length > 0 || (includeEmptyTabs && emptyTabIds.has(tab.id)),
   );
 
   if (tabsWithVisibleWidgets.length === 0 && activeTabs.length > 0) {

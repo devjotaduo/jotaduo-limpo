@@ -12,8 +12,8 @@ set -euo pipefail
 
 REPO_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 LOG_DIR="${LOG_DIR:-$REPO_DIR/jotaduo/ci/logs}"
-SERVER_TESTS="${SERVER_TESTS:-src/engine/core-modules/application src/engine/core-modules/logic-function src/engine/metadata-modules/ai src/engine/core-modules/admin-panel src/engine/workspace-manager/workspace-migration/workspace-migration-runner/action-handlers/field src/modules/timeline}"
-FRONT_TESTS="${FRONT_TESTS:-src/modules/front-components src/modules/metadata-store src/modules/navigation-menu-item src/modules/activities/timeline-activities src/modules/ai/components src/jotaduo}"
+SERVER_TESTS="${SERVER_TESTS:-src/engine/core-modules/application src/engine/core-modules/logic-function src/engine/metadata-modules/ai src/engine/metadata-modules/page-layout src/engine/metadata-modules/flat-page-layout src/engine/core-modules/admin-panel src/engine/workspace-manager/workspace-migration/workspace-migration-runner/action-handlers/field src/modules/timeline}"
+FRONT_TESTS="${FRONT_TESTS:-src/modules/front-components src/modules/metadata-store src/modules/navigation-menu-item src/modules/activities/timeline-activities src/modules/ai/components src/modules/page-layout src/modules/side-panel/pages/page-layout src/jotaduo}"
 RENDERER_TESTS="${RENDERER_TESTS:-src}"
 
 builder_args=()
