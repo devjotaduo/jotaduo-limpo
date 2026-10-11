@@ -88,8 +88,7 @@ type OpenPurposeBuiltSidePanelPageParams =
     };
 
 export type OpenSidePanelPageParams<T extends AppPath = AppPath> =
-  | OpenRoutedSidePanelPageParams<T>
-  | OpenPurposeBuiltSidePanelPageParams;
+  OpenRoutedSidePanelPageParams<T> | OpenPurposeBuiltSidePanelPageParams;
 
 export type OpenSidePanelPageFunction = <T extends AppPath>(
   params: OpenSidePanelPageParams<T>,
@@ -145,6 +144,14 @@ export type UploadFileFunction = (
   params: UploadFileParams,
 ) => Promise<UploadFileResult>;
 
+export type PickAndUploadFileFunction = (params: {
+  fieldMetadataId: string;
+}) => Promise<
+  | { status: 'uploaded'; file: UploadedFrontComponentFile & { label: string } }
+  | { status: 'cancelled' }
+  | { status: 'failed'; reason: UploadFileFailureReason | 'picker-busy' }
+>;
+
 export type OpenCommandConfirmationModalHostFunction = (
   params: Parameters<OpenCommandConfirmationModalFunction>[0],
 ) => Promise<void>;
@@ -175,6 +182,7 @@ export type FrontComponentHostCommunicationApiStore = {
   updateProgress?: UpdateProgressFunction;
   copyToClipboard?: CopyToClipboardFunction;
   uploadFile?: UploadFileFunction;
+  pickAndUploadFile?: PickAndUploadFileFunction;
   storageSet?: StorageSetFunction;
   storageDelete?: StorageDeleteFunction;
   storageClear?: StorageClearFunction;

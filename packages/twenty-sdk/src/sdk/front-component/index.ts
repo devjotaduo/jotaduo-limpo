@@ -10,6 +10,7 @@ export { openSidePanelPage } from './functions/openSidePanelPage';
 export { unmountFrontComponent } from './functions/unmountFrontComponent';
 export { updateProgress } from './functions/updateProgress';
 export { uploadFile } from './functions/uploadFile';
+export { pickAndUploadFile } from './functions/pickAndUploadFile';
 export { useColorScheme } from './hooks/useColorScheme';
 export { useFrontComponentExecutionContext } from './hooks/useFrontComponentExecutionContext';
 export { useFrontComponentId } from './hooks/useFrontComponentId';
@@ -55,6 +56,7 @@ export type {
   UploadedFrontComponentFile,
   UploadFileFailureReason,
   UploadFileFunction,
+  PickAndUploadFileFunction,
   UploadFileParams,
   UploadFileResult,
 } from './globals/frontComponentHostCommunicationApi';

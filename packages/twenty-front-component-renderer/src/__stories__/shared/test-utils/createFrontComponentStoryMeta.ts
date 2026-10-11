@@ -16,6 +16,7 @@ export const hostApiMocks = {
   requestAccessTokenRefresh: fn().mockResolvedValue('refreshed-token'),
   openCommandConfirmationModal: fn().mockResolvedValue(undefined),
   copyToClipboard: fn().mockResolvedValue(undefined),
+  pickAndUploadFile: fn().mockResolvedValue({ status: 'cancelled' }),
   uploadFile: fn().mockResolvedValue({
     status: 'failed',
     reason: 'upload-failed',
