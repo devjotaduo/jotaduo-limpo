@@ -2,7 +2,7 @@ import { type NavigationMenuItemOption } from '@/navigation-menu-item/edit/compo
 import { useNavigationMenuItemAddOptions } from '@/navigation-menu-item/edit/hooks/useNavigationMenuItemAddOptions';
 import { useNavigationMenuItemEditController } from '@/navigation-menu-item/edit/hooks/useNavigationMenuItemEditController';
 import { useState } from 'react';
-import { normalizeSearchText } from '~/utils/normalizeSearchText';
+import { normalizeSearchText } from 'twenty-ui/utilities';
 
 import { JOTADUO_MESSAGES } from '~/jotaduo/i18n/constants/JotaduoMessages';
 import { useJotaduoText } from '~/jotaduo/i18n/hooks/useJotaduoText';
