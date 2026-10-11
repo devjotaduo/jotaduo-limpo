@@ -1,0 +1,1 @@
+export const JOTADUO_REMINDER_OBJECT_NAME_SINGULAR = 'jdLembrete';

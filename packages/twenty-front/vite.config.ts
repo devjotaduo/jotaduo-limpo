@@ -22,6 +22,7 @@ import {
   API_PROXY_PATHS,
   buildApiProxyMatcher,
 } from './src/config/apiProxyPrefixes';
+import { jotaduoModuleOverridesPlugin } from './src/jotaduo/vite/jotaduoModuleOverridesPlugin';
 
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, __dirname, '');
@@ -92,6 +93,9 @@ export default defineConfig(({ mode }) => {
 
     plugins: [
       jotaduoBranding({ enabled: env.JOTADUO_BRANDING_ENABLED !== 'false' }),
+      jotaduoModuleOverridesPlugin({
+        sourceRoot: path.resolve(__dirname, 'src'),
+      }),
       react({
         plugins: [['@lingui/swc-plugin', {}]],
       }),

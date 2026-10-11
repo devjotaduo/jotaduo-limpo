@@ -1,0 +1,1 @@
+export const JOTADUO_CONVERSATIONS_OBJECT_NAME_PLURAL = 'jdConversas';
