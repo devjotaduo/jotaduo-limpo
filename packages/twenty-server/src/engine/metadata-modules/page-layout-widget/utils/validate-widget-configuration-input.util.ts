@@ -23,6 +23,7 @@ import {
   PageLayoutWidgetExceptionCode,
 } from 'src/engine/metadata-modules/page-layout-widget/exceptions/page-layout-widget.exception';
 import { validateWidgetConfigurationByDto } from 'src/engine/metadata-modules/page-layout-widget/utils/validate-widget-configuration-by-dto.util';
+import { generatedUiConfigurationSchema } from 'twenty-shared/types';
 
 const formatValidationErrors = (
   errors: ValidationError[],
@@ -77,6 +78,19 @@ export const validateWidgetConfigurationInput = ({
 
   const configurationType =
     configurationRecord.configurationType as WidgetConfigurationType;
+
+  if (configurationType === WidgetConfigurationType.AI_GENERATED_UI) {
+    const result = generatedUiConfigurationSchema.safeParse(configuration);
+
+    if (!result.success) {
+      throw new PageLayoutWidgetException(
+        `Invalid generated UI configuration: ${result.error.message}`,
+        PageLayoutWidgetExceptionCode.INVALID_PAGE_LAYOUT_WIDGET_DATA,
+      );
+    }
+
+    return;
+  }
 
   let errors: ValidationError[] = [];
 

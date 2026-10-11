@@ -14,6 +14,7 @@ import { createAddDashboardTabTool } from 'src/modules/dashboard/tools/add-dashb
 import { createAddDashboardWidgetTool } from 'src/modules/dashboard/tools/add-dashboard-widget.tool';
 import { createCreateCompleteDashboardTool } from 'src/modules/dashboard/tools/create-complete-dashboard.tool';
 import { createDeleteDashboardWidgetTool } from 'src/modules/dashboard/tools/delete-dashboard-widget.tool';
+import { createDraftUiPageTool } from 'src/modules/dashboard/tools/draft-ui-page.tool';
 import { createGetDashboardTool } from 'src/modules/dashboard/tools/get-dashboard.tool';
 import { createListDashboardsTool } from 'src/modules/dashboard/tools/list-dashboards.tool';
 import { type DashboardToolDependencies } from 'src/modules/dashboard/tools/types/dashboard-tool-dependencies.type';
@@ -72,6 +73,7 @@ export class DashboardToolWorkspaceService {
       this.deps,
       context,
     );
+    const draftUiPage = createDraftUiPageTool();
 
     return {
       [createCompleteDashboard.name]: createCompleteDashboard,
@@ -81,6 +83,7 @@ export class DashboardToolWorkspaceService {
       [addDashboardWidget.name]: addDashboardWidget,
       [updateDashboardWidget.name]: updateDashboardWidget,
       [deleteDashboardWidget.name]: deleteDashboardWidget,
+      [draftUiPage.name]: draftUiPage,
     };
   }
 }

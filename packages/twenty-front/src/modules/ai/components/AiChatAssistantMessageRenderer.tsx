@@ -1,4 +1,5 @@
 import { AiChatCompactionIndicator } from '@/ai/components/AiChatCompactionIndicator';
+import { AiChatGeneratedUiPagePreview } from '@/ai/components/AiChatGeneratedUiPagePreview';
 import { AiChatInitialLoadingIndicator } from '@/ai/components/AiChatInitialLoadingIndicator';
 import { CodeExecutionDisplay } from '@/ai/components/CodeExecutionDisplay';
 import { ThinkingStepsDisplay } from '@/ai/components/ThinkingStepsDisplay';
@@ -62,6 +63,12 @@ const MessagePartRenderer = ({
       );
     default:
       if (isToolUIPart(part)) {
+        if (getEffectiveToolName(part) === 'draft_ui_page') {
+          return part.state === 'output-available' ? (
+            <AiChatGeneratedUiPagePreview output={part.output} />
+          ) : null;
+        }
+
         if (
           getToolName(part) === ASK_QUESTION_TOOL_NAME ||
           getToolName(part) === ASK_QUESTIONS_TOOL_NAME

@@ -24,6 +24,76 @@ import { WidgetConfigurationType } from 'src/engine/metadata-modules/page-layout
 import { validateWidgetConfigurationInput } from 'src/engine/metadata-modules/page-layout-widget/utils/validate-widget-configuration-input.util';
 
 describe('validateWidgetConfigurationInput', () => {
+  describe('AI_GENERATED_UI configuration', () => {
+    it('accepts safe generated UI configuration without a component id', () => {
+      expect(() =>
+        validateWidgetConfigurationInput({
+          configuration: {
+            configurationType: WidgetConfigurationType.AI_GENERATED_UI,
+            schemaVersion: 1,
+            blocks: [
+              {
+                type: 'heading',
+                level: 1,
+                text: 'Pipeline overview',
+              },
+            ],
+          },
+        }),
+      ).not.toThrow();
+    });
+
+    it('rejects blocks outside the allowlisted component catalog', () => {
+      expect(() =>
+        validateWidgetConfigurationInput({
+          configuration: {
+            configurationType: WidgetConfigurationType.AI_GENERATED_UI,
+            schemaVersion: 1,
+            blocks: [{ type: 'script', code: 'alert(1)' }],
+          },
+        }),
+      ).toThrow(/Invalid generated UI configuration/);
+    });
+
+    it('rejects properties outside the generated UI block catalog', () => {
+      expect(() =>
+        validateWidgetConfigurationInput({
+          configuration: {
+            configurationType: WidgetConfigurationType.AI_GENERATED_UI,
+            schemaVersion: 1,
+            blocks: [
+              {
+                type: 'text',
+                text: 'Safe text',
+                onClick: 'run-code',
+              },
+            ],
+          },
+        }),
+      ).toThrow(/Invalid generated UI configuration/);
+    });
+
+    it('rejects page trees outside the allowed depth', () => {
+      const deeplyNestedBlock = (depth: number): Record<string, unknown> =>
+        depth === 0
+          ? { type: 'text', text: 'Too deep' }
+          : {
+              type: 'stack',
+              children: [deeplyNestedBlock(depth - 1)],
+            };
+
+      expect(() =>
+        validateWidgetConfigurationInput({
+          configuration: {
+            configurationType: WidgetConfigurationType.AI_GENERATED_UI,
+            schemaVersion: 1,
+            blocks: [deeplyNestedBlock(9)],
+          },
+        }),
+      ).toThrow(/Invalid generated UI configuration/);
+    });
+  });
+
   describe('EMAIL_THREAD widget', () => {
     it('should not throw for valid email thread configuration', () => {
       expect(() =>

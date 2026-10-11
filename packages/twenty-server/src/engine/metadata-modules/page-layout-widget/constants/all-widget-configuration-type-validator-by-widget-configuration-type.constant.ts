@@ -15,6 +15,7 @@ import { FormFieldConfigurationDTO } from 'src/engine/metadata-modules/page-layo
 import { FieldsConfigurationDTO } from 'src/engine/metadata-modules/page-layout-widget/dtos/fields-configuration.dto';
 import { FilesConfigurationDTO } from 'src/engine/metadata-modules/page-layout-widget/dtos/files-configuration.dto';
 import { FrontComponentConfigurationDTO } from 'src/engine/metadata-modules/page-layout-widget/dtos/front-component-configuration.dto';
+import { GeneratedUiConfigurationDTO } from 'src/engine/metadata-modules/page-layout-widget/dtos/generated-ui-configuration.dto';
 import { IframeConfigurationDTO } from 'src/engine/metadata-modules/page-layout-widget/dtos/iframe-configuration.dto';
 import { LineChartConfigurationDTO } from 'src/engine/metadata-modules/page-layout-widget/dtos/line-chart-configuration.dto';
 import { NotesConfigurationDTO } from 'src/engine/metadata-modules/page-layout-widget/dtos/notes-configuration.dto';
@@ -40,6 +41,7 @@ export const ALL_WIDGET_CONFIGURATION_TYPE_VALIDATOR_BY_WIDGET_CONFIGURATION_TYP
     BAR_CHART: BarChartConfigurationDTO,
     CALENDAR: CalendarConfigurationDTO,
     FRONT_COMPONENT: FrontComponentConfigurationDTO,
+    AI_GENERATED_UI: GeneratedUiConfigurationDTO,
     EMAILS: EmailsConfigurationDTO,
     EMAIL_THREAD: EmailThreadConfigurationDTO,
     CALL_RECORDING_SUMMARY: CallRecordingSummaryConfigurationDTO,

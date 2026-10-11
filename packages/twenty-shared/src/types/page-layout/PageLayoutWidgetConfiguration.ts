@@ -4,6 +4,7 @@ import { type SerializedRelation } from '../SerializedRelation';
 
 import { type ChartFilter } from './ChartFilter';
 import { type RatioAggregateConfig } from './RatioAggregateConfig';
+import { type GeneratedUiConfiguration } from './GeneratedUiConfiguration';
 
 type BaseChartConfiguration = {
   aggregateFieldMetadataId: SerializedRelation;
@@ -220,6 +221,7 @@ export type PageLayoutWidgetConfiguration =
   | StandaloneRichTextConfiguration
   | IframeConfiguration
   | FrontComponentConfiguration
+  | GeneratedUiConfiguration
   | TimelineConfiguration
   | TasksConfiguration
   | NotesConfiguration

@@ -2,12 +2,14 @@ import { styled } from '@linaria/react';
 import { Suspense, lazy } from 'react';
 
 import { isDefined } from 'twenty-shared/utils';
+import { isGeneratedUiConfiguration } from 'twenty-shared/types';
 
 import { FrontComponentSkeletonLoader } from '@/front-components/components/FrontComponentSkeletonLoader';
 import { usePageLayoutContentContext } from '@/page-layout/contexts/PageLayoutContentContext';
 import { useIsPageLayoutInEditMode } from '@/page-layout/hooks/useIsPageLayoutInEditMode';
 import { type PageLayoutWidget } from '@/page-layout/types/PageLayoutWidget';
 import { PageLayoutWidgetNoDataDisplay } from '@/page-layout/widgets/components/PageLayoutWidgetNoDataDisplay';
+import { GeneratedUiRenderer } from '@/page-layout/widgets/generated-ui/components/GeneratedUiRenderer';
 import { StyledWidgetContentFrame } from '@/page-layout/widgets/components/WidgetContentFrame';
 import { isWidgetConfigurationOfType } from '@/side-panel/pages/page-layout/utils/isWidgetConfigurationOfType';
 import { useLayoutRenderingContext } from '@/ui/layout/contexts/LayoutRenderingContext';
@@ -40,6 +42,19 @@ export const FrontComponentWidgetRenderer = ({
   const isPageLayoutInEditMode = useIsPageLayoutInEditMode();
   const { presentation } = usePageLayoutContentContext();
   const { targetRecordIdentifier } = useLayoutRenderingContext();
+
+  const generatedUiConfiguration: unknown = widget.configuration;
+
+  if (isGeneratedUiConfiguration(generatedUiConfiguration)) {
+    return (
+      <StyledContainer
+        isInEditMode={isPageLayoutInEditMode}
+        isSoloLayout={presentation === 'solo'}
+      >
+        <GeneratedUiRenderer blocks={generatedUiConfiguration.blocks} />
+      </StyledContainer>
+    );
+  }
 
   const configuration = widget.configuration;
 

@@ -244,6 +244,19 @@ export type {
   ChatConfiguration,
   PageLayoutWidgetConfiguration,
 } from './page-layout/PageLayoutWidgetConfiguration';
+export {
+  generatedUiBlockSchema,
+  generatedUiConfigurationSchema,
+  generatedUiPageDraftInputSchema,
+  generatedUiPageDraftSchema,
+  isGeneratedUiConfiguration,
+  isGeneratedUiPageDraft,
+} from './page-layout/GeneratedUiConfiguration';
+export type {
+  GeneratedUiConfiguration,
+  GeneratedUiBlock,
+  GeneratedUiPageDraft,
+} from './page-layout/GeneratedUiConfiguration';
 export type {
   PageLayoutWidgetGridPosition,
   PageLayoutWidgetVerticalListPosition,

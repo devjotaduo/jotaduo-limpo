@@ -233,6 +233,11 @@ export const PAGE_LAYOUT_WIDGET_FRAGMENT = gql`
         frontComponentId
         headerCommandMenuItemUniversalIdentifiers
       }
+      ... on GeneratedUiConfiguration {
+        configurationType
+        schemaVersion
+        blocks
+      }
     }
     pageLayoutTabId
   }
