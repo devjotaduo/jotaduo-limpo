@@ -112,6 +112,20 @@ jest.mock('@/ai/components/AgentChatThreadsFetchMoreTrigger', () => ({
   AgentChatThreadsFetchMoreTrigger: () => null,
 }));
 
+jest.mock('@/ai/components/AgentChatChannelThreadsLoadEffect', () => ({
+  AgentChatChannelThreadsLoadEffect: () => null,
+}));
+
+jest.mock('@/ai/components/AgentChatChannelThreadsFetchMoreTrigger', () => ({
+  AgentChatChannelThreadsFetchMoreTrigger: () => null,
+}));
+
+jest.mock('@/ai/hooks/useLoadAgentChatChannelThreads', () => ({
+  useLoadAgentChatChannelThreads: () => ({
+    loadAgentChatChannelThreads: jest.fn(),
+  }),
+}));
+
 jest.mock('@/ai/hooks/useRefreshAgentChatThreads', () => ({
   useRefreshAgentChatThreads: () => ({ fetchMoreAgentChatThreads: jest.fn() }),
 }));
@@ -239,6 +253,25 @@ describe('AiChatInboxPage', () => {
       hasNextPage: false,
       endCursor: null,
     });
+    // The member's own chats, which they follow
+    jotaiStore.set(
+      agentChatThreadParticipantsState.atom,
+      Object.fromEntries(
+        THREADS.map(({ id, updatedAt }) => [
+          id,
+          {
+            id: `participant-${id}`,
+            threadId: id,
+            lastReadAt: updatedAt,
+            archivedAt: null,
+            snoozedUntil: null,
+            isSubscribed: true,
+            lastMentionedAt: null,
+            updatedAt,
+          },
+        ]),
+      ),
+    );
     isMobile = false;
     mockIsAiChatInboxEnabled = true;
   });

@@ -223,6 +223,7 @@ export {
   IconH6,
   IconHandClick,
   IconHandMove,
+  IconHash,
   IconHeadphones,
   IconHeart,
   IconHeartOff,
@@ -449,6 +450,8 @@ export {
   IconWorld,
   IconWorldWww,
   IconX,
+  IconZzz,
+  IconZzzOff,
 } from '@tabler/icons-react';
 
 export type { IconProps as TablerIconsProps } from '@tabler/icons-react';

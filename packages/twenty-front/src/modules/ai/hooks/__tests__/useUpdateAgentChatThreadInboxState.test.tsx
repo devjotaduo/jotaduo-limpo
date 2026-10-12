@@ -6,10 +6,7 @@ import { useUpdateAgentChatThreadInboxState } from '@/ai/hooks/useUpdateAgentCha
 import { agentChatThreadParticipantsState } from '@/ai/states/agentChatThreadParticipantsState';
 import { agentChatThreadVisitState } from '@/ai/states/agentChatThreadVisitState';
 import { recordStoreFamilyState } from '@/object-record/record-store/states/recordStoreFamilyState';
-import {
-  AgentChatInboxAction,
-  GetAgentChatOpenThreadsSummaryDocument,
-} from '~/generated-metadata/graphql';
+import { AgentChatInboxAction } from '~/generated-metadata/graphql';
 
 const THREAD_ID = '20202020-0000-4000-8000-0000000000aa';
 const OTHER_THREAD_ID = '20202020-0000-4000-8000-0000000000bb';
@@ -26,12 +23,11 @@ const READ_PARTICIPANT = {
 };
 
 const mutate = jest.fn();
-const refetchQueries = jest.fn(() => Promise.resolve([]));
 const enqueueToast = jest.fn();
 
 jest.mock('@apollo/client/react', () => ({
   ...jest.requireActual('@apollo/client/react'),
-  useApolloClient: () => ({ mutate, refetchQueries }),
+  useApolloClient: () => ({ mutate }),
 }));
 
 jest.mock('twenty-ui/components/feedback', () => ({
@@ -63,7 +59,7 @@ describe('useUpdateAgentChatThreadInboxState', () => {
     jest.clearAllMocks();
   });
 
-  it('reads a thread up to its last activity before the server answers', async () => {
+  it('reads a thread up to its last activity before the server answers, without following it', async () => {
     mutate.mockReturnValue(new Promise(() => undefined));
     const { result, store } = renderUpdateInboxState();
 
@@ -81,7 +77,7 @@ describe('useUpdateAgentChatThreadInboxState', () => {
       lastReadAt: LAST_ACTIVITY_AT,
       archivedAt: null,
       snoozedUntil: null,
-      isSubscribed: true,
+      isSubscribed: false,
     });
   });
 
@@ -98,14 +94,14 @@ describe('useUpdateAgentChatThreadInboxState', () => {
 
     const participants = store.get(agentChatThreadParticipantsState.atom);
 
-    expect(participants?.[THREAD_ID]?.archivedAt).toEqual(expect.any(String));
+    expect(participants?.[THREAD_ID]).toMatchObject({
+      archivedAt: expect.any(String),
+      isSubscribed: true,
+    });
     expect(participants?.[OTHER_THREAD_ID]?.archivedAt).toEqual(
       expect.any(String),
     );
     expect(mutate).toHaveBeenCalledTimes(1);
-    expect(refetchQueries).toHaveBeenCalledWith({
-      include: [GetAgentChatOpenThreadsSummaryDocument],
-    });
   });
 
   it('puts the member state back and reports a refused snooze', async () => {

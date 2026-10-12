@@ -235,6 +235,10 @@ import { AddTwoFactorAuthenticationRecoveryCodeIndexConcurrentlySlowInstanceComm
 import { AddUpgradeMigrationWorkspaceIdCreatedAtIndexConcurrentlySlowInstanceCommand } from 'src/database/commands/upgrade-version-command/2-46/2-46-instance-command-slow-1791401524805-add-upgrade-migration-workspace-id-created-at-index-concurrently';
 import { AddPayloadToPendingWakeUpFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-46/2-46-instance-command-fast-1791438611736-add-payload-to-pending-wake-up';
 import { MoveAgentRunSuspensionsToPendingWakeUpsSlowInstanceCommand } from 'src/database/commands/upgrade-version-command/2-46/2-46-instance-command-slow-1791438611737-move-agent-run-suspensions-to-pending-wake-ups';
+import { RestoreAgentEvaluationInputsFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-46/2-46-instance-command-fast-1791464994704-restore-agent-evaluation-inputs';
+import { AddPurchaseToBillingCreditGrantTypeFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-46/2-46-instance-command-fast-1791470452911-add-purchase-to-billing-credit-grant-type';
+import { RestoreUsageLimitMeterCompatibilityFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-46/2-46-instance-command-fast-1791538680877-restore-usage-limit-meter-compatibility';
+import { DropUsageLimitMeterFastInstanceCommand } from 'src/database/commands/upgrade-version-command/2-47/2-47-instance-command-fast-1791720497488-drop-usage-limit-meter';
 
 export const INSTANCE_COMMANDS = [
   AddViewFieldGroupIdIndexOnViewFieldFastInstanceCommand,
@@ -472,4 +476,8 @@ export const INSTANCE_COMMANDS = [
   AddUpgradeMigrationWorkspaceIdCreatedAtIndexConcurrentlySlowInstanceCommand,
   AddPayloadToPendingWakeUpFastInstanceCommand,
   MoveAgentRunSuspensionsToPendingWakeUpsSlowInstanceCommand,
+  RestoreAgentEvaluationInputsFastInstanceCommand,
+  AddPurchaseToBillingCreditGrantTypeFastInstanceCommand,
+  RestoreUsageLimitMeterCompatibilityFastInstanceCommand,
+  DropUsageLimitMeterFastInstanceCommand,
 ];

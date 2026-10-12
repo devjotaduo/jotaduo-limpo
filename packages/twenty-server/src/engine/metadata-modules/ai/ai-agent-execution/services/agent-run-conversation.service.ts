@@ -1,5 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 
+import { getToolName, isToolUIPart } from 'ai';
+
 import { isNonEmptyString } from '@sniptt/guards';
 import {
   type ExtendedFileUIPart,
@@ -11,9 +13,15 @@ import { isDefined } from 'twenty-shared/utils';
 
 import { CacheLockService } from 'src/engine/core-modules/cache-lock/cache-lock.service';
 import { CacheLockException } from 'src/engine/core-modules/cache-lock/exceptions/cache-lock.exception';
+import { AGENT_WAIT_TOOL_NAMES } from 'src/engine/metadata-modules/ai/ai-agent-execution/pausing-tools/constants/agent-wait-tool-names.constant';
+import { AgentChatDefaultChannelService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-default-channel.service';
 import { AgentChatThreadService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-thread.service';
 import { findLastMessageText } from 'src/engine/metadata-modules/ai/ai-chat/utils/find-last-message-text.util';
-import { mapErrorToStreamError } from 'src/engine/metadata-modules/ai/ai-history/utils/map-error-to-stream-error.util';
+import {
+  mapErrorToStreamError,
+  type StreamErrorPayload,
+} from 'src/engine/metadata-modules/ai/ai-history/utils/map-error-to-stream-error.util';
+import { AGENT_TURN_CREDITS_EXHAUSTED_ERROR } from 'src/engine/metadata-modules/ai/ai-history/constants/agent-turn-credits-exhausted-error.constant';
 import { AgentTurnStatus } from 'src/engine/metadata-modules/ai/ai-history/enums/agent-turn-status.enum';
 import { AgentTurnRecorderService } from 'src/engine/metadata-modules/ai/ai-history/services/agent-turn-recorder.service';
 import {
@@ -25,6 +33,7 @@ import { AgentHistoryRepository } from 'src/engine/metadata-modules/ai/ai-histor
 import { InjectAgentHistoryRepository } from 'src/engine/metadata-modules/ai/ai-history/repositories/inject-agent-history-repository.decorator';
 import { AgentConversationWriterService } from 'src/engine/metadata-modules/ai/ai-history/services/agent-conversation-writer.service';
 import { type AgentChatThreadWorkspaceEntity } from 'src/engine/metadata-modules/ai/ai-history/standard-objects/agent-chat-thread.workspace-entity';
+import { isAwaitingPausingToolOutput } from 'src/engine/metadata-modules/ai/ai-history/utils/is-awaiting-pausing-tool-output.util';
 import { type RecordableAgentExecution } from 'src/engine/metadata-modules/ai/ai-history/types/recordable-agent-execution.type';
 import {
   AiException,
@@ -45,6 +54,7 @@ export class AgentRunConversationService {
     private readonly cacheLockService: CacheLockService,
     private readonly turnRecorderService: AgentTurnRecorderService,
     private readonly threadService: AgentChatThreadService,
+    private readonly defaultChannelService: AgentChatDefaultChannelService,
   ) {}
 
   withThreadLock<TResult>({
@@ -129,12 +139,19 @@ export class AgentRunConversationService {
       where: { id: threadId },
       select: ['id'],
     });
+    const newThreadChannel = isDefined(existingThread)
+      ? {}
+      : await this.defaultChannelService.findSystemThreadChannel(workspaceId);
 
     return this.conversationWriterService.runInTransaction(
       workspaceId,
       async (scope) => {
         if (!isDefined(existingThread)) {
-          await scope.insert('agentChatThread', { id: threadId, title });
+          await scope.insert('agentChatThread', {
+            id: threadId,
+            title,
+            ...newThreadChannel,
+          });
         }
 
         const turnId = await this.conversationWriterService.insertTurn({
@@ -200,33 +217,47 @@ export class AgentRunConversationService {
           execution,
         })
         .catch(async (error: unknown) => {
+          const failure = mapErrorToStreamError(error);
+
           await this.turnRecorderService.finishExecutedTurn({
             ...turn,
-            error: mapErrorToStreamError(error),
+            error: failure,
           });
+          await this.recordFailureActivity({ workspaceId, threadId, failure });
 
           throw error;
         });
 
+    // a run that paused on a wait goes on later, so its turn is not done yet
+    const isWaitingOnWait =
+      execution.isPaused === true &&
+      replyParts.some(
+        (part) =>
+          isToolUIPart(part) &&
+          AGENT_WAIT_TOOL_NAMES.includes(getToolName(part)) &&
+          isAwaitingPausingToolOutput(part.output),
+      );
+
     await this.turnRecorderService.finishExecutedTurn({
       ...turn,
-      isAwaitingAnswer,
+      isWaiting: isAwaitingAnswer || isWaitingOnWait,
     });
 
-    // the waiting call is already saved and can be answered from the conversation, so a
-    // failure to bring it back to the inbox must not fail the run
+    // The turn fails without throwing when the workspace ran out of credits
+    if (execution.hasNoMoreAvailableCredits) {
+      await this.recordFailureActivity({
+        workspaceId,
+        threadId,
+        failure: AGENT_TURN_CREDITS_EXHAUSTED_ERROR,
+      });
+    }
+
     if (isAwaitingAnswer) {
-      await this.threadService
-        .recordThreadActivity({
-          workspaceId,
-          threadId,
-          text: findLastMessageText(replyParts) ?? title,
-        })
-        .catch((error: unknown) =>
-          this.logger.warn(
-            `Could not record waiting activity on thread ${threadId}: ${error instanceof Error ? error.message : String(error)}`,
-          ),
-        );
+      await this.recordThreadActivitySafely({
+        workspaceId,
+        threadId,
+        text: findLastMessageText(replyParts) ?? title,
+      });
     }
 
     return { isAwaitingAnswer };
@@ -234,19 +265,68 @@ export class AgentRunConversationService {
 
   async failTurn({
     workspaceId,
+    threadId,
     turnId,
     error,
   }: {
     workspaceId: string;
+    threadId: string;
     turnId: string;
     error: unknown;
   }): Promise<void> {
+    const failure = mapErrorToStreamError(error);
+
     await this.turnRecorderService.finish({
       workspaceId,
       turnId,
       status: AgentTurnStatus.FAILED,
-      error: mapErrorToStreamError(error),
+      error: failure,
     });
+    await this.recordFailureActivity({ workspaceId, threadId, failure });
+  }
+
+  // A failed run in a channel comes back for its members, where a chat
+  // filed away by default would otherwise hide it
+  private async recordFailureActivity({
+    workspaceId,
+    threadId,
+    failure,
+  }: {
+    workspaceId: string;
+    threadId: string;
+    failure: StreamErrorPayload;
+  }): Promise<void> {
+    const thread = await this.threadRepository.findOne(workspaceId, {
+      where: { id: threadId },
+    });
+
+    if (!isDefined(thread?.channelId)) {
+      return;
+    }
+
+    await this.recordThreadActivitySafely({
+      workspaceId,
+      threadId,
+      text: failure.message,
+      threadBefore: thread,
+    });
+  }
+
+  // the waiting call or the failure is already saved and shows in the conversation, so a
+  // failure to bring it back to the inbox must not fail the run
+  private async recordThreadActivitySafely(args: {
+    workspaceId: string;
+    threadId: string;
+    text: string;
+    threadBefore?: AgentChatThreadWorkspaceEntity;
+  }): Promise<void> {
+    await this.threadService
+      .recordThreadActivity(args)
+      .catch((error: unknown) =>
+        this.logger.warn(
+          `Could not record activity on thread ${args.threadId}: ${error instanceof Error ? error.message : String(error)}`,
+        ),
+      );
   }
 
   private buildMessageParts(message: RunAgentMessage): ExtendedUIMessagePart[] {

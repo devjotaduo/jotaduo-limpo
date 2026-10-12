@@ -4,10 +4,19 @@ import { RecordShareModule } from 'src/engine/core-modules/record-share/record-s
 import { RecordShareStorageModule } from 'src/engine/core-modules/record-share/record-share-storage.module';
 import { UserWorkspaceModule } from 'src/engine/core-modules/user-workspace/user-workspace.module';
 import { AgentChatThreadLifecycleModule } from 'src/engine/metadata-modules/ai/ai-chat/agent-chat-thread-lifecycle.module';
+import { AgentChatDefaultChannelWorkspaceMemberListener } from 'src/engine/metadata-modules/ai/ai-chat/listeners/agent-chat-default-channel-workspace-member.listener';
+import { EndAgentChatChannelSnoozeJob } from 'src/engine/metadata-modules/ai/ai-chat/jobs/end-agent-chat-channel-snooze.job';
 import { EndAgentChatThreadSnoozeJob } from 'src/engine/metadata-modules/ai/ai-chat/jobs/end-agent-chat-thread-snooze.job';
+import { AgentChatChannelAccessService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-channel-access.service';
+import { AgentChatChannelListService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-channel-list.service';
+import { AgentChatChannelRecordEventService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-channel-record-event.service';
+import { AgentChatChannelService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-channel.service';
+import { AgentChatChannelThreadsService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-channel-threads.service';
+import { AgentChatDefaultChannelService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-default-channel.service';
 import { AgentChatSharingService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-sharing.service';
 import { AgentChatThreadParticipantEventService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-thread-participant-event.service';
 import { AgentChatThreadParticipantService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-thread-participant.service';
+import { AgentChatThreadTriageService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-thread-triage.service';
 import { AgentChatThreadService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-thread.service';
 import { AgentInboxService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-inbox.service';
 import { AgentHistoryModule } from 'src/engine/metadata-modules/ai/ai-history/ai-history.module';
@@ -27,17 +36,31 @@ import { WorkspaceCacheModule } from 'src/engine/workspace-cache/workspace-cache
     WorkspaceCacheModule,
   ],
   providers: [
+    AgentChatChannelAccessService,
+    AgentChatChannelListService,
+    AgentChatChannelRecordEventService,
+    AgentChatChannelService,
+    AgentChatChannelThreadsService,
+    AgentChatDefaultChannelService,
+    AgentChatDefaultChannelWorkspaceMemberListener,
     AgentChatSharingService,
     AgentChatThreadParticipantEventService,
     AgentChatThreadParticipantService,
     AgentChatThreadService,
+    AgentChatThreadTriageService,
     AgentInboxService,
+    EndAgentChatChannelSnoozeJob,
     EndAgentChatThreadSnoozeJob,
   ],
   exports: [
+    AgentChatChannelListService,
+    AgentChatChannelService,
+    AgentChatChannelThreadsService,
+    AgentChatDefaultChannelService,
     AgentChatSharingService,
     AgentChatThreadParticipantService,
     AgentChatThreadService,
+    AgentChatThreadTriageService,
     AgentInboxService,
   ],
 })

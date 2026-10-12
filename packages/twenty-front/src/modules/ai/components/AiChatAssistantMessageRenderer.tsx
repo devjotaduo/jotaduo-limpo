@@ -120,11 +120,13 @@ export const AiChatAssistantMessageRenderer = ({
   isLastMessageStreaming,
   hasError,
   shouldHideThinkingSteps = false,
+  workDurationMs,
 }: {
   messageParts: ExtendedUIMessagePart[];
   isLastMessageStreaming: boolean;
   hasError?: boolean;
   shouldHideThinkingSteps?: boolean;
+  workDurationMs?: number | null;
 }) => {
   const frontComponentIdByToolName = useFrontComponentIdByToolName();
 
@@ -165,6 +167,10 @@ export const AiChatAssistantMessageRenderer = ({
       : groupedRenderItems;
 
   const lastRenderItemIndex = renderItems.length - 1;
+  // the duration covers the whole message, so only the steps right before the final answer carry it
+  const lastThinkingStepsRenderItemIndex = renderItems.findLastIndex(
+    (renderItem) => renderItem.type === 'thinking-steps',
+  );
 
   if (!renderItems.length && !hasError) {
     const hasOnlyHiddenReasoning =
@@ -197,6 +203,11 @@ export const AiChatAssistantMessageRenderer = ({
                 isLastMessageStreaming &&
                 !hasError &&
                 index === lastRenderItemIndex
+              }
+              workDurationMs={
+                index === lastThinkingStepsRenderItemIndex
+                  ? workDurationMs
+                  : null
               }
             />
           ) : (

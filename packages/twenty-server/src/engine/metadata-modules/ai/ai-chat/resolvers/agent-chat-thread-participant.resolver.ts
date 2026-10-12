@@ -16,6 +16,7 @@ import { AgentChatOpenThreadsSummaryDTO } from 'src/engine/metadata-modules/ai/a
 import { AgentChatThreadParticipantDTO } from 'src/engine/metadata-modules/ai/ai-chat/dtos/agent-chat-thread-participant.dto';
 import { AgentChatInboxAction } from 'src/engine/metadata-modules/ai/ai-chat/enums/agent-chat-inbox-action.enum';
 import { AgentChatThreadParticipantService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-thread-participant.service';
+import { AgentChatThreadTriageService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-thread-triage.service';
 import { AgentChatThreadService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-thread.service';
 import {
   AiException,
@@ -44,6 +45,7 @@ export class AgentChatThreadParticipantResolver {
   constructor(
     private readonly participantService: AgentChatThreadParticipantService,
     private readonly threadService: AgentChatThreadService,
+    private readonly triageService: AgentChatThreadTriageService,
   ) {}
 
   @Query(() => AgentChatOpenThreadsSummaryDTO)
@@ -77,7 +79,7 @@ export class AgentChatThreadParticipantResolver {
       );
     }
 
-    return this.participantService.updateInboxState({
+    return this.triageService.updateInboxState({
       threadIds,
       action,
       snoozedUntil: snoozedUntil ?? null,
@@ -106,22 +108,5 @@ export class AgentChatThreadParticipantResolver {
     });
 
     return true;
-  }
-
-  // Returns the members who were added, leaving out those who cannot reply in the chat
-  @Mutation(() => [UUIDScalarType])
-  async addAgentChatThreadParticipants(
-    @Args('threadId', { type: () => UUIDScalarType }) threadId: string,
-    @Args('workspaceMemberIds', { type: () => [UUIDScalarType] })
-    participantWorkspaceMemberIds: string[],
-    @AuthWorkspaceMemberId() workspaceMemberId: string,
-    @AuthWorkspace() { id: workspaceId }: WorkspaceEntity,
-  ): Promise<string[]> {
-    return this.threadService.addParticipants({
-      threadId,
-      participantWorkspaceMemberIds,
-      workspaceMemberId,
-      workspaceId,
-    });
   }
 }

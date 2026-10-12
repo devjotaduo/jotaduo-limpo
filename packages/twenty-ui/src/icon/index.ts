@@ -279,6 +279,7 @@ export {
   IconH6,
   IconHandClick,
   IconHandMove,
+  IconHash,
   IconHeadphones,
   IconHeart,
   IconHeartOff,
@@ -505,6 +506,8 @@ export {
   IconWorld,
   IconWorldWww,
   IconX,
+  IconZzz,
+  IconZzzOff,
 } from './components/TablerIcons';
 export { ThinkingOrbitLoaderIcon } from './components/ThinkingOrbitLoaderIcon';
 export type {

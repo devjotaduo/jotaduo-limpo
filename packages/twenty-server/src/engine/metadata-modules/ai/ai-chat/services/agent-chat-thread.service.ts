@@ -6,14 +6,15 @@ import { In, IsNull } from 'typeorm';
 import { isUserAuthContext } from 'src/engine/core-modules/auth/guards/is-user-auth-context.guard';
 import { type WorkspaceAuthContext } from 'src/engine/core-modules/auth/types/workspace-auth-context.type';
 import { AGENT_CHAT_THREAD_ACTIVITY_COLUMNS } from 'src/engine/metadata-modules/ai/ai-chat/constants/agent-chat-thread-activity-columns.constant';
+import { AgentChatChannelAccessService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-channel-access.service';
 import { AgentChatSharingService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-sharing.service';
 import { AgentChatThreadParticipantService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-thread-participant.service';
 import { AgentChatThreadRecordEventService } from 'src/engine/metadata-modules/ai/ai-chat/services/agent-chat-thread-record-event.service';
 import { type AgentChatThreadAccessArgs } from 'src/engine/metadata-modules/ai/ai-chat/types/agent-chat-thread-access-args.type';
 import { type AgentChatThreadActivity } from 'src/engine/metadata-modules/ai/ai-chat/types/agent-chat-thread-activity.type';
 import { buildAgentChatThreadActivitySetClause } from 'src/engine/metadata-modules/ai/ai-chat/utils/build-agent-chat-thread-activity-set-clause.util';
+import { isUniqueViolationError } from 'src/engine/metadata-modules/ai/ai-chat/utils/is-unique-violation-error.util';
 import { throwAgentChatThreadNotFound } from 'src/engine/metadata-modules/ai/ai-chat/utils/throw-agent-chat-thread-not-found.util';
-import { touchAgentChatThread } from 'src/engine/metadata-modules/ai/ai-chat/utils/touch-agent-chat-thread.util';
 import { AgentHistoryRepository } from 'src/engine/metadata-modules/ai/ai-history/repositories/agent-history-repository';
 import { type AgentHistoryStorageContext } from 'src/engine/metadata-modules/ai/ai-history/services/agent-history-workspace-storage.service';
 import { InjectAgentHistoryRepository } from 'src/engine/metadata-modules/ai/ai-history/repositories/inject-agent-history-repository.decorator';
@@ -33,11 +34,21 @@ export class AgentChatThreadService {
     private readonly sharingService: AgentChatSharingService,
     private readonly threadRecordEventService: AgentChatThreadRecordEventService,
     private readonly participantService: AgentChatThreadParticipantService,
+    private readonly channelAccessService: AgentChatChannelAccessService,
   ) {}
 
   async createThread(
     args: Parameters<AgentChatSharingService['createThread']>[0],
   ) {
+    if (isDefined(args.channelId)) {
+      await this.channelAccessService.assertChannelAccess({
+        workspaceId: args.workspaceId,
+        workspaceMemberId: args.workspaceMemberId,
+        channelId: args.channelId,
+        operationType: 'update',
+      });
+    }
+
     const savedThread = await this.sharingService.createThread(args);
 
     // Sent first, so the new thread never shows as unread to its owner
@@ -53,6 +64,27 @@ export class AgentChatThreadService {
     });
 
     return savedThread;
+  }
+
+  // The client picks a new chat's id, so its first message creates the thread.
+  // An existing thread is left for the caller to check access to.
+  async createThreadIfMissing({
+    threadId,
+    ...args
+  }: AgentChatThreadAccessArgs & { channelId?: string }): Promise<void> {
+    if (
+      await this.threadRepository.existsBy(args.workspaceId, { id: threadId })
+    ) {
+      return;
+    }
+
+    try {
+      await this.createThread({ ...args, id: threadId });
+    } catch (error) {
+      if (!isUniqueViolationError(error)) {
+        throw error;
+      }
+    }
   }
 
   // owned threads are skipped so an upsert cannot reassign them
@@ -98,7 +130,7 @@ export class AgentChatThreadService {
 
     const assignedThreadIds = assignedThreads.map(({ id }) => id);
     const participantObjectMetadataId =
-      await this.sharingService.findParticipantObjectMetadataId(workspaceId);
+      await this.sharingService.getParticipantObjectMetadataId(workspaceId);
 
     const setUpThreads = await this.threadRepository.query(
       workspaceId,
@@ -215,10 +247,7 @@ export class AgentChatThreadService {
         memberIds: candidateMemberIds,
       });
 
-    if (
-      participantMemberIds.length === 0 ||
-      !(await this.sharingService.hasInboxState(args.workspaceId))
-    ) {
+    if (participantMemberIds.length === 0) {
       return participantMemberIds;
     }
 
@@ -261,13 +290,6 @@ export class AgentChatThreadService {
   }: AgentChatThreadAccessArgs & {
     assigneeWorkspaceMemberId: string | null;
   }): Promise<void> {
-    if (!(await this.sharingService.hasInboxState(args.workspaceId))) {
-      throw new AiException(
-        'Chat assignees are not available until this workspace finishes upgrading',
-        AiExceptionCode.CHAT_THREAD_INBOX_STATE_UNAVAILABLE,
-      );
-    }
-
     const thread = await this.getWritableThread(args);
 
     if (
@@ -334,6 +356,68 @@ export class AgentChatThreadService {
     });
   }
 
+  // Members who reach the chat only through its former channel lose it. A
+  // chat with no owner reads through nothing outside a channel, so it stays
+  // in one. Its place in the new channel starts open.
+  async moveToChannel({
+    channelId,
+    ...args
+  }: AgentChatThreadAccessArgs & {
+    channelId: string | null;
+  }): Promise<void> {
+    const thread = await this.getWritableThread(args);
+
+    if (isDefined(channelId)) {
+      await this.channelAccessService.assertChannelAccess({
+        ...args,
+        channelId,
+        operationType: 'update',
+      });
+    } else if (!isDefined(thread.workspaceMemberId)) {
+      throw new AiException(
+        'A chat without an owner cannot leave its channel',
+        AiExceptionCode.CHAT_THREAD_CANNOT_LEAVE_CHANNEL,
+      );
+    }
+
+    if ((thread.channelId ?? null) === channelId) {
+      return;
+    }
+
+    // The owner is checked again under the row lock, as removing a member
+    // from the workspace clears it on their channel chats
+    const movedThreadIds = await this.threadRepository.query(
+      args.workspaceId,
+      ({ manager, table }) =>
+        manager.query<{ id: string }[]>(
+          `WITH moved_thread AS (
+             UPDATE ${table('agentChatThread')}
+             SET "channelId" = $2::uuid,
+               "channelArchivedAt" = NULL,
+               "channelSnoozedUntil" = NULL,
+               "updatedAt" = now()
+             WHERE id = $1
+               AND ($2::uuid IS NOT NULL OR "workspaceMemberId" IS NOT NULL)
+             RETURNING id
+           )
+           SELECT id FROM moved_thread`,
+          [args.threadId, channelId],
+        ),
+    );
+
+    if (movedThreadIds.length === 0) {
+      throw new AiException(
+        'A chat without an owner cannot leave its channel',
+        AiExceptionCode.CHAT_THREAD_CANNOT_LEAVE_CHANNEL,
+      );
+    }
+
+    await this.threadRecordEventService.emitThreadUpdated({
+      workspaceId: args.workspaceId,
+      threadBefore: thread,
+    });
+  }
+
   // The message is already sent, so a mention that cannot be applied leaves the
   // member out rather than failing the send
   async addMentionedParticipants({
@@ -386,13 +470,11 @@ export class AgentChatThreadService {
       return;
     }
 
-    const activity = (await this.sharingService.hasInboxState(workspaceId))
-      ? await this.recordAgentActivity({ workspaceId, threadId, text })
-      : await touchAgentChatThread({
-          repository: this.threadRepository,
-          workspaceId,
-          threadId,
-        });
+    const activity = await this.recordAgentActivity({
+      workspaceId,
+      threadId,
+      text,
+    });
 
     if (!isDefined(activity)) {
       return;
@@ -445,7 +527,7 @@ export class AgentChatThreadService {
       threadAfter: {
         ...thread,
         ...recordedColumns,
-        lastActivityAt: lastActivityAt?.toISOString() ?? thread.lastActivityAt,
+        lastActivityAt: lastActivityAt.toISOString(),
         updatedAt: updatedAt.toISOString(),
       },
     });

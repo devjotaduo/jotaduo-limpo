@@ -10,10 +10,7 @@ import { AiChatAvatar } from '@/ai/components/AiChatAvatar';
 import { getAiChatSuggestedPrompts } from '@/ai/components/suggested-prompts/getAiChatSuggestedPrompts';
 import { useAiChatSuggestedPromptsContext } from '@/ai/hooks/useAiChatSuggestedPromptsContext';
 import { useStageAiChatPreprompt } from '@/ai/hooks/useStageAiChatPreprompt';
-import { AGENT_CHAT_NEW_THREAD_DRAFT_KEY } from '@/ai/states/agentChatDraftsByThreadIdState';
-import { currentAiChatThreadState } from '@/ai/states/currentAiChatThreadState';
 import { type SuggestedPrompt } from '@/ai/types/SuggestedPrompt';
-import { useAtomStateValue } from '@/ui/utilities/state/jotai/hooks/useAtomStateValue';
 
 // the page and the side panel show the same welcome (AI/Chat body, Empty?): face, title and
 // prompts centered; only the face is smaller in the panel
@@ -53,7 +50,6 @@ export const AiChatSuggestedPrompts = ({
 }: AiChatSuggestedPromptsProps) => {
   const { t: resolveMessage } = useLingui();
   const { stageAiChatPreprompt } = useStageAiChatPreprompt();
-  const currentAiChatThread = useAtomStateValue(currentAiChatThreadState);
   const aiChatSuggestedPromptsContext = useAiChatSuggestedPromptsContext();
 
   const suggestedPrompts = getAiChatSuggestedPrompts(
@@ -66,7 +62,6 @@ export const AiChatSuggestedPrompts = ({
         resolveMessage(pickRandom(suggestedPrompt.prompts)),
       ),
       mode: suggestedPrompt.mode ?? 'PREFILL',
-      draftKey: currentAiChatThread ?? AGENT_CHAT_NEW_THREAD_DRAFT_KEY,
     });
   };
 
