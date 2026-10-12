@@ -1,0 +1,67 @@
+---
+title: Criar páginas com o Copiloty
+description: Gere, revise e salve páginas personalizadas do Twenty a partir de uma conversa com o Copiloty.
+---
+
+O Copiloty pode transformar uma instrução em linguagem natural em uma página visual com abas e widgets. Você vê uma prévia no chat e decide quando salvá-la. A página salva usa os metadados nativos de layouts do Twenty.
+
+O fluxo usa um catálogo controlado de componentes visuais. Ele é inspirado em editores visuais como o Puck, mas não usa Puck Cloud, não exige uma chave do Puck e não executa código gerado pela IA.
+
+## Antes de começar
+
+- O recurso precisa estar disponível na versão do Twenty usada pelo seu workspace.
+- A configuração de um provedor de IA para o Copiloty deve estar concluída.
+- Para salvar uma página, sua função precisa ter a permissão **Layouts**. Sem ela, as mutações nativas do Twenty recusam a gravação.
+
+## Criar uma página
+
+1. Abra o chat do Copiloty.
+2. Descreva o objetivo da página, quem vai usá-la e como quer organizar o conteúdo.
+3. Peça explicitamente o número e os nomes das abas.
+4. Aguarde a prévia aparecer na conversa e navegue pelas abas para revisar o resultado.
+5. Se quiser mudanças, envie uma instrução complementar ao Copiloty e revise a nova proposta.
+6. Quando estiver satisfeito, clique em **Save page** na prévia.
+7. Aguarde a confirmação **Page saved and added to navigation**. A página passa a existir nos metadados do workspace e é adicionada à navegação.
+
+### Exemplo de solicitação
+
+> Crie uma página chamada “Visão comercial” com as abas “Resumo” e “Prioridades”. No Resumo, mostre três cartões com métricas de texto para oportunidades abertas, valor do pipeline e negócios ganhos. Em Prioridades, organize os próximos passos em uma grade de duas colunas. Use textos curtos em português, inclua badges para os níveis de prioridade e não invente ações ou ligações com dados.
+
+Para melhorar a primeira proposta, seja específico sobre a hierarquia e o conteúdo. Por exemplo:
+
+> Na aba Resumo, coloque o título antes dos cartões. Troque a grade de Prioridades para três colunas e use um badge de alerta nos itens urgentes.
+
+Confira sempre a prévia mais recente antes de salvar. Cada cartão **Save page** grava a proposta apresentada naquela prévia.
+
+## Componentes disponíveis
+
+O catálogo atual aceita estes blocos:
+
+| Bloco     | Como usar                                                                                             |
+| --------- | ----------------------------------------------------------------------------------------------------- |
+| `stack`   | Organiza blocos verticalmente. Pode usar espaçamento pequeno, médio ou grande e conter outros blocos. |
+| `grid`    | Organiza blocos em duas ou três colunas e se adapta a telas estreitas.                                |
+| `card`    | Agrupa blocos em um cartão e pode ter um título.                                                      |
+| `heading` | Mostra um título de nível 1, 2 ou 3.                                                                  |
+| `text`    | Mostra texto normal ou atenuado.                                                                      |
+| `badge`   | Mostra um rótulo neutro, positivo, de alerta ou de perigo.                                            |
+| `metric`  | Mostra um rótulo, um valor textual e, opcionalmente, uma legenda.                                     |
+
+`stack`, `grid` e `card` podem conter outros blocos do catálogo. O catálogo aceita de uma a seis abas, limita a árvore a oito níveis e 80 blocos por aba, e limita cada texto a 500 caracteres. O servidor aplica esses limites ao salvar e ao carregar configurações.
+
+## O que a prévia representa
+
+A prévia renderiza os blocos aprovados usando os componentes e tokens visuais do Twenty. A configuração fica versionada como `AI_GENERATED_UI` dentro de um widget de layout. Ao abrir a página salva, o Twenty valida essa configuração e a renderiza novamente.
+
+Os valores de `metric` são texto fornecido pelo modelo. Nesta versão, eles não são consultas ao CRM nem ficam conectados automaticamente a registros, campos, tabelas ou gráficos. Se precisar de dados atualizados, confira os valores antes de salvar e atualize a página conforme necessário.
+
+O Copiloty não pode adicionar blocos fora do catálogo, propriedades desconhecidas, código, TSX, HTML, scripts, estilos, URLs ou manipuladores de eventos à configuração da página. Solicitações desse tipo não são executadas como código.
+
+## Salvar, permissão e falhas
+
+- **A prévia ainda não está salva.** Gerar ou revisar uma proposta não altera os metadados do workspace. A gravação começa somente depois do clique em **Save page**.
+- **O botão mostra um erro ao salvar.** Confirme que sua função tem permissão **Layouts**. Se a permissão estiver correta, peça uma nova proposta e tente novamente; falhas de rede também podem interromper as mutações.
+- **A página não aparece na navegação.** Atualize a aplicação e confirme se a operação foi concluída com a mensagem de sucesso. A criação do layout, das abas, do widget e do item de navegação usa mutações nativas do Twenty.
+- **A proposta não pode ser apresentada.** Peça ao Copiloty para gerar uma página mais simples e use apenas os componentes desta página. Conteúdo fora do catálogo é rejeitado.
+
+Para entender outros recursos do Copiloty, consulte [Chatbot de IA](/pt/user-guide/ai/capabilities/ai-chatbot). Para personalizar a navegação, consulte [Navegação](/pt/user-guide/layout/capabilities/navigation).
